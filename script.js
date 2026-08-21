@@ -1,827 +1,1874 @@
 /* =========================================================
-   TRACKIT — SCRIPT.JS
-   Expense • Income • Transfer • Savings • Investments
+   TRACKIT
+   Expense + Income Tracker
+   Vanilla JavaScript
    ========================================================= */
 
 
 /* =========================================================
-   01. STORAGE
+   STORAGE
    ========================================================= */
 
 const STORAGE_KEY = "trackit_data_v1";
 
 
-const defaultData = {
+const DEFAULT_DATA = {
+    categories: {
+        expenses: [],
+        incomes: []
+    },
+
+    accounts: [],
+
+    investments: [],
+
+    savings: [],
+
+    transactions: [],
+
     settings: {
-        expenseCategories: [
-            "Food",
-            "Travel",
-            "Shopping",
-            "Bills",
-            "Education",
-            "Health",
-            "Entertainment",
-            "Other"
-        ],
-
-        incomeCategories: [
-            "Salary",
-            "Freelance",
-            "Business",
-            "Interest",
-            "Gift",
-            "Other"
-        ],
-
-        cashAccounts: [
-            {
-                id: "cash-primary",
-                name: "Cash",
-                balance: 0,
-                primary: true,
-                countInStats: true
-            }
-        ],
-
-        bankAccounts: [
-            {
-                id: "bank-primary",
-                name: "Bank",
-                balance: 0,
-                primary: true,
-                countInStats: true
-            }
-        ],
-
-        investments: [],
-
-        savings: [],
-
-        statisticAccounts: {
+        statistics: {
             cash: true,
             bank: true,
             investments: true,
             savings: true
         }
-    },
-
-    transactions: []
+    }
 };
 
 
 let data = loadData();
 
+let currentPage = "dashboard";
+
+let pendingQuickTransaction = null;
+
+let selectedPickerCallback = null;
+
+let editingTransactionId = null;
+
+let editingAccountId = null;
+
+let editingInvestmentId = null;
+
+let editingSavingId = null;
+
+let swipeState = null;
+
 
 /* =========================================================
-   02. DATA HELPERS
+   INITIALIZATION
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    initializeApp();
+
+});
+
+
+function initializeApp() {
+
+    ensureDataStructure();
+
+    setupNavigation();
+
+    setupDashboardInputs();
+
+    setupGlobalButtons();
+
+    setupModalEvents();
+
+    setupKeyboardBehavior();
+
+    setupSwipeTransactions();
+
+    renderEverything();
+
+    checkInitialSetup();
+
+}
+
+
+/* =========================================================
+   DATA
    ========================================================= */
 
 function loadData() {
+
     try {
+
         const saved = localStorage.getItem(STORAGE_KEY);
 
         if (!saved) {
-            return structuredClone(defaultData);
+            return structuredClone(DEFAULT_DATA);
         }
 
         const parsed = JSON.parse(saved);
 
         return mergeDefaults(parsed);
+
     } catch (error) {
-        console.error("TrackIt data could not be loaded:", error);
 
-        return structuredClone(defaultData);
+        console.error("TrackIt storage error:", error);
+
+        return structuredClone(DEFAULT_DATA);
+
     }
-}
 
-
-function mergeDefaults(saved) {
-    const fresh = structuredClone(defaultData);
-
-    return {
-        ...fresh,
-        ...saved,
-
-        settings: {
-            ...fresh.settings,
-            ...(saved.settings || {}),
-
-            expenseCategories:
-                saved.settings?.expenseCategories ||
-                fresh.settings.expenseCategories,
-
-            incomeCategories:
-                saved.settings?.incomeCategories ||
-                fresh.settings.incomeCategories,
-
-            cashAccounts:
-                saved.settings?.cashAccounts ||
-                fresh.settings.cashAccounts,
-
-            bankAccounts:
-                saved.settings?.bankAccounts ||
-                fresh.settings.bankAccounts,
-
-            investments:
-                saved.settings?.investments ||
-                fresh.settings.investments,
-
-            savings:
-                saved.settings?.savings ||
-                fresh.settings.savings,
-
-            statisticAccounts: {
-                ...fresh.settings.statisticAccounts,
-                ...(saved.settings?.statisticAccounts || {})
-            }
-        },
-
-        transactions: Array.isArray(saved.transactions)
-            ? saved.transactions
-            : []
-    };
 }
 
 
 function saveData() {
+
     localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify(data)
     );
+
+}
+
+
+function mergeDefaults(saved) {
+
+    const result = structuredClone(DEFAULT_DATA);
+
+    if (!saved || typeof saved !== "object") {
+        return result;
+    }
+
+    result.categories = {
+        ...result.categories,
+        ...(saved.categories || {})
+    };
+
+    result.settings = {
+        ...result.settings,
+        ...(saved.settings || {}),
+        statistics: {
+            ...result.settings.statistics,
+            ...(saved.settings?.statistics || {})
+        }
+    };
+
+    result.accounts = Array.isArray(saved.accounts)
+        ? saved.accounts
+        : [];
+
+    result.investments = Array.isArray(saved.investments)
+        ? saved.investments
+        : [];
+
+    result.savings = Array.isArray(saved.savings)
+        ? saved.savings
+        : [];
+
+    result.transactions = Array.isArray(saved.transactions)
+        ? saved.transactions
+        : [];
+
+    return result;
+
+}
+
+
+function ensureDataStructure() {
+
+    data = mergeDefaults(data);
+
+    saveData();
+
 }
 
 
 /* =========================================================
-   03. GENERAL HELPERS
+   HELPERS
    ========================================================= */
 
-const $ = (selector, parent = document) =>
-    parent.querySelector(selector);
+function $(selector) {
+    return document.querySelector(selector);
+}
 
 
-const $$ = (selector, parent = document) =>
-    [...parent.querySelectorAll(selector)];
+function $all(selector) {
+    return [...document.querySelectorAll(selector)];
+}
 
 
-function uid(prefix = "id") {
+function generateId(prefix = "id") {
+
     return (
         prefix +
-        "-" +
+        "_" +
         Date.now() +
-        "-" +
+        "_" +
         Math.random()
             .toString(36)
-            .slice(2, 8)
+            .slice(2, 9)
     );
+
 }
 
 
-function money(value) {
-    const number = Number(value) || 0;
+function todayString() {
 
-    return "₹" +
-        number.toLocaleString("en-IN", {
-            maximumFractionDigits: 2
-        });
-}
-
-
-function numberValue(value) {
-    return Number(
-        String(value)
-            .replace(/,/g, "")
-            .replace(/[^\d.-]/g, "")
-    ) || 0;
-}
-
-
-function todayISO() {
     const date = new Date();
 
     const year = date.getFullYear();
 
-    const month =
-        String(date.getMonth() + 1)
-            .padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
 
-    const day =
-        String(date.getDate())
-            .padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
+
 }
 
 
-function monthKey(dateString) {
-    return String(dateString).slice(0, 7);
+function monthString(date = new Date()) {
+
+    return (
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0")
+    );
+
 }
 
 
-function isToday(dateString) {
-    return dateString === todayISO();
+function formatCurrency(amount) {
+
+    const number = Number(amount) || 0;
+
+    return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 2
+    }).format(number);
+
 }
 
 
-function isThisMonth(dateString) {
-    return monthKey(dateString) ===
-        monthKey(todayISO());
+function formatNumber(amount) {
+
+    return new Intl.NumberFormat("en-IN", {
+        maximumFractionDigits: 2
+    }).format(Number(amount) || 0);
+
 }
 
 
 function formatDate(dateString) {
-    if (!dateString) return "";
 
-    const date = new Date(
-        dateString + "T00:00:00"
-    );
+    if (!dateString) {
+        return "";
+    }
 
-    return date.toLocaleDateString(
-        "en-IN",
-        {
-            day: "numeric",
-            month: "short",
-            year: "numeric"
-        }
-    );
+    const date = new Date(dateString + "T00:00:00");
+
+    return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+    });
+
 }
 
 
-function formatShortDate(dateString) {
-    if (!dateString) return "";
+function formatTime(timestamp) {
 
-    const date = new Date(
-        dateString + "T00:00:00"
-    );
+    if (!timestamp) {
+        return "";
+    }
 
-    return date.toLocaleDateString(
-        "en-IN",
-        {
-            day: "numeric",
-            month: "short"
-        }
-    );
+    return new Date(timestamp).toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit"
+    });
+
 }
 
 
 function escapeHTML(value) {
+
     return String(value ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+
 }
 
 
-/* =========================================================
-   04. ICON HELPER
-   Uses Lucide if available.
-   ========================================================= */
+function getAccount(id) {
 
-function icon(name, size = 18) {
-    return `
-        <i
-            data-lucide="${name}"
-            style="width:${size}px;height:${size}px"
-        ></i>
-    `;
+    return data.accounts.find(account => account.id === id);
+
 }
 
 
-function refreshIcons() {
-    if (
-        window.lucide &&
-        typeof window.lucide.createIcons === "function"
-    ) {
-        window.lucide.createIcons();
-    }
+function getPrimaryAccount(type) {
+
+    return data.accounts.find(
+        account =>
+            account.type === type &&
+            account.primary === true
+    );
+
 }
 
 
-/* =========================================================
-   05. INITIALIZATION
-   ========================================================= */
+function getAccountBalance(id) {
 
-document.addEventListener(
-    "DOMContentLoaded",
-    init
-);
+    let balance = 0;
 
+    data.transactions.forEach(transaction => {
 
-function init() {
+        if (transaction.type === "expense") {
 
-    setupNavigation();
-
-    setupQuickInputs();
-
-    setupSwipeDelete();
-
-    setupGlobalButtons();
-
-    setupSettings();
-
-    setupImportExport();
-
-    setupOverlay();
-
-    renderEverything();
-
-    updateHeaderDate();
-
-    refreshIcons();
-}
-
-
-/* =========================================================
-   06. HEADER DATE
-   ========================================================= */
-
-function updateHeaderDate() {
-    const element =
-        $("#headerDate, .header-date");
-
-    if (!element) return;
-
-    const today = new Date();
-
-    element.textContent =
-        today.toLocaleDateString(
-            "en-IN",
-            {
-                weekday: "long",
-                day: "numeric",
-                month: "long"
+            if (transaction.accountId === id) {
+                balance -= Number(transaction.amount);
             }
-        );
+
+        }
+
+        if (transaction.type === "income") {
+
+            if (transaction.accountId === id) {
+                balance += Number(transaction.amount);
+            }
+
+        }
+
+        if (transaction.type === "transfer") {
+
+            if (transaction.fromAccountId === id) {
+                balance -= Number(transaction.amount);
+            }
+
+            if (transaction.toAccountId === id) {
+                balance += Number(transaction.amount);
+            }
+
+        }
+
+    });
+
+    return balance;
+
 }
 
 
 /* =========================================================
-   07. NAVIGATION
+   NAVIGATION
    ========================================================= */
 
 function setupNavigation() {
 
-    $$(".nav-item").forEach(button => {
+    $all(".nav-item").forEach(button => {
 
-        button.addEventListener(
-            "click",
-            () => {
+        button.addEventListener("click", () => {
 
-                const pageName =
-                    button.dataset.page;
+            const page = button.dataset.page;
 
-                if (!pageName) return;
-
-                showPage(pageName);
-
+            if (!page) {
+                return;
             }
-        );
+
+            switchPage(page);
+
+        });
 
     });
+
 }
 
 
-function showPage(pageName) {
+function switchPage(page) {
 
-    $$(".page").forEach(page => {
+    currentPage = page;
 
-        page.classList.remove("active");
+    $all(".page").forEach(section => {
 
-    });
-
-
-    const target =
-        document.getElementById(pageName) ||
-        $(`[data-page-content="${pageName}"]`);
-
-    if (target) {
-        target.classList.add("active");
-    }
-
-
-    $$(".nav-item").forEach(item => {
-
-        item.classList.toggle(
+        section.classList.toggle(
             "active",
-            item.dataset.page === pageName
+            section.dataset.page === page
         );
 
     });
 
+
+    $all(".nav-item").forEach(button => {
+
+        button.classList.toggle(
+            "active",
+            button.dataset.page === page
+        );
+
+    });
+
+
+    if (page === "dashboard") {
+        renderDashboard();
+    }
+
+    if (page === "transactions") {
+        renderTransactionsPage();
+    }
+
+    if (page === "statistics") {
+        renderStatistics();
+    }
+
+    if (page === "settings") {
+        renderSettings();
+    }
 
     window.scrollTo({
         top: 0,
         behavior: "smooth"
     });
 
-
-    renderEverything();
 }
 
 
 /* =========================================================
-   08. QUICK INPUTS
+   DASHBOARD INPUTS
    ========================================================= */
 
-function setupQuickInputs() {
+function setupDashboardInputs() {
 
-    const inputs =
-        $$(".amount-input, .quick-expense-input, .quick-income-input");
+    const expenseInputs = $all(
+        ".expense-amount-input"
+    );
 
-    inputs.forEach(input => {
+    const incomeInputs = $all(
+        ".income-amount-input"
+    );
 
-        input.setAttribute(
-            "inputmode",
-            "decimal"
-        );
 
-        input.setAttribute(
-            "pattern",
-            "[0-9]*"
-        );
-
+    expenseInputs.forEach(input => {
 
         input.addEventListener(
             "keydown",
             event => {
 
-                if (event.key !== "Enter") {
-                    return;
-                }
+                if (
+                    event.key === "Enter" ||
+                    event.key === "Tab"
+                ) {
 
-                event.preventDefault();
+                    event.preventDefault();
 
-                const amount =
-                    numberValue(input.value);
-
-                if (amount <= 0) {
-                    showToast(
-                        "Enter an amount first"
+                    openQuickCategoryPicker(
+                        "expense",
+                        input
                     );
 
-                    return;
                 }
-
-
-                const type =
-                    getQuickInputType(input);
-
-                openQuickTransactionSheet(
-                    type,
-                    amount,
-                    input
-                );
 
             }
         );
 
     });
-}
 
 
-function getQuickInputType(input) {
+    incomeInputs.forEach(input => {
 
-    if (
-        input.dataset.type === "income" ||
-        input.classList.contains(
-            "quick-income-input"
-        )
-    ) {
-        return "income";
-    }
+        input.addEventListener(
+            "keydown",
+            event => {
 
-    return "expense";
+                if (
+                    event.key === "Enter" ||
+                    event.key === "Tab"
+                ) {
+
+                    event.preventDefault();
+
+                    openQuickCategoryPicker(
+                        "income",
+                        input
+                    );
+
+                }
+
+            }
+        );
+
+    });
+
+
+    $all(".expense-amount-input").forEach(input => {
+
+        input.addEventListener("input", () => {
+
+            input.value = input.value
+                .replace(/[^\d.]/g, "")
+                .replace(/(\..*)\./g, "$1");
+
+        });
+
+    });
+
+
+    $all(".income-amount-input").forEach(input => {
+
+        input.addEventListener("input", () => {
+
+            input.value = input.value
+                .replace(/[^\d.]/g, "")
+                .replace(/(\..*)\./g, "$1");
+
+        });
+
+    });
+
 }
 
 
 /* =========================================================
-   09. QUICK TRANSACTION SHEET
+   QUICK CATEGORY PICKER
    ========================================================= */
 
-function openQuickTransactionSheet(
-    type,
-    amount,
-    sourceInput
-) {
+function openQuickCategoryPicker(type, input) {
 
-    const sheet =
-        getSheet(
-            type === "expense"
-                ? "expenseCategorySheet"
-                : "incomeCategorySheet"
-        );
+    const amount = Number(input.value);
 
-    if (!sheet) {
+    if (!amount || amount <= 0) {
 
-        fallbackCategorySelection(
-            type,
-            amount,
-            sourceInput
-        );
+        showToast("Enter an amount first.");
+
+        input.focus();
 
         return;
+
     }
 
 
-    sheet.dataset.amount = amount;
-
-    sheet.dataset.type = type;
-
-    sheet.dataset.sourceInput =
-        sourceInput?.id || "";
+    const accountType =
+        input.dataset.accountType || "cash";
 
 
-    renderCategorySheet(
-        sheet,
-        type
-    );
+    const account =
+        getPrimaryAccount(accountType);
 
 
-    openSheet(sheet);
+    if (!account) {
 
-    refreshIcons();
-}
+        showToast(
+            `Add a primary ${accountType} account first.`
+        );
 
+        openAccountManager(accountType);
 
-function fallbackCategorySelection(
-    type,
-    amount,
-    sourceInput
-) {
+        return;
+
+    }
+
 
     const categories =
         type === "expense"
-            ? data.settings.expenseCategories
-            : data.settings.incomeCategories;
+            ? data.categories.expenses
+            : data.categories.incomes;
 
 
-    if (!categories.length) {
+    if (categories.length === 0) {
 
         showToast(
-            "Add a category in Settings"
+            `Add an ${type} category first.`
         );
 
+        openCategoryManager(type);
+
         return;
+
     }
+
+
+    pendingQuickTransaction = {
+        type,
+        amount,
+        accountId: account.id,
+        input
+    };
 
 
     openCategoryPicker(
         type,
-        amount,
-        sourceInput
-    );
-}
-
-
-/* =========================================================
-   10. CATEGORY SHEET
-   ========================================================= */
-
-function renderCategorySheet(
-    sheet,
-    type
-) {
-
-    const categories =
-        type === "expense"
-            ? data.settings.expenseCategories
-            : data.settings.incomeCategories;
-
-
-    const grid =
-        $(".category-grid", sheet);
-
-    if (!grid) return;
-
-
-    grid.innerHTML =
         categories
-            .map(
-                (category, index) => `
-                    <button
-                        type="button"
-                        class="category-button"
-                        data-category-index="${index}"
-                    >
+    );
 
-                        <span class="category-button-icon">
-                            ${icon(
-                                getCategoryIcon(category),
-                                16
-                            )}
-                        </span>
-
-                        <span class="category-button-name">
-                            ${escapeHTML(category)}
-                        </span>
-
-                    </button>
-                `
-            )
-            .join("");
-
-
-    $$(".category-button", sheet)
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    const index =
-                        Number(
-                            button.dataset
-                                .categoryIndex
-                        );
-
-                    const category =
-                        categories[index];
-
-                    const amount =
-                        numberValue(
-                            sheet.dataset.amount
-                        );
-
-                    addTransaction({
-                        type,
-                        amount,
-                        category,
-                        account:
-                            getQuickAccount(
-                                type,
-                                sheet
-                            )
-                    });
-
-
-                    closeSheet(sheet);
-
-                }
-            );
-
-        });
-}
-
-
-function getCategoryIcon(category) {
-
-    const key =
-        category
-            .toLowerCase()
-            .trim();
-
-
-    const icons = {
-
-        food: "utensils",
-
-        travel: "car-front",
-
-        shopping: "shopping-bag",
-
-        bills: "receipt",
-
-        education: "book-open",
-
-        health: "heart-pulse",
-
-        entertainment: "clapperboard",
-
-        salary: "briefcase-business",
-
-        freelance: "laptop",
-
-        business: "store",
-
-        interest: "percent",
-
-        gift: "gift",
-
-        other: "circle-dashed"
-    };
-
-
-    return icons[key] || "circle-dashed";
 }
 
 
 /* =========================================================
-   11. GET QUICK ACCOUNT
+   CATEGORY PICKER
    ========================================================= */
 
-function getQuickAccount(type, sheet) {
+function openCategoryPicker(type, categories) {
 
-    const selector =
-        type === "expense"
-            ? $(
-                "[data-expense-account]",
-                sheet
-            )
-            : $(
-                "[data-income-account]",
-                sheet
-            );
+    const modal =
+        $("#category-picker-modal");
 
-
-    if (
-        selector &&
-        selector.dataset.account
-    ) {
-        return selector.dataset.account;
+    if (!modal) {
+        return;
     }
 
 
-    const accounts =
-        type === "expense"
-            ? data.settings.cashAccounts
-            : data.settings.cashAccounts;
+    const title =
+        modal.querySelector(".modal-title");
+
+    if (title) {
+
+        title.textContent =
+            type === "expense"
+                ? "Choose expense category"
+                : "Choose income category";
+
+    }
 
 
-    const primary =
-        accounts.find(
-            account => account.primary
+    const list =
+        modal.querySelector(".category-options");
+
+    if (!list) {
+        return;
+    }
+
+
+    list.innerHTML = "";
+
+
+    categories.forEach(category => {
+
+        const button =
+            document.createElement("button");
+
+        button.type = "button";
+
+        button.className =
+            "category-option";
+
+        button.dataset.categoryId =
+            category.id;
+
+        button.innerHTML = `
+            <span>${escapeHTML(category.name)}</span>
+            <span>›</span>
+        `;
+
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                completeQuickTransaction(
+                    category
+                );
+
+            }
         );
 
 
-    return primary?.id || accounts[0]?.id;
+        list.appendChild(button);
+
+    });
+
+
+    openModal(modal);
+
 }
 
 
-/* =========================================================
-   12. ADD TRANSACTION
-   ========================================================= */
+function completeQuickTransaction(category) {
 
-function addTransaction({
-    type,
-    amount,
-    category,
-    account,
-    date = todayISO(),
-    note = ""
-}) {
-
-    amount = numberValue(amount);
-
-    if (amount <= 0) {
-        showToast("Invalid amount");
-
+    if (!pendingQuickTransaction) {
         return;
     }
 
 
     const transaction = {
 
-        id: uid("tx"),
+        id: generateId("tx"),
 
-        type,
+        type: pendingQuickTransaction.type,
 
-        amount,
+        amount: pendingQuickTransaction.amount,
 
-        category:
-            category || "Other",
+        accountId:
+            pendingQuickTransaction.accountId,
 
-        account:
-            account || null,
+        categoryId: category.id,
 
-        date,
+        categoryName: category.name,
 
-        note,
+        date: todayString(),
 
-        createdAt:
-            new Date().toISOString()
+        createdAt: Date.now()
+
     };
 
 
     data.transactions.push(transaction);
 
-
-    updateAccountBalance(
-        transaction,
-        1
-    );
-
-
     saveData();
+
+
+    if (pendingQuickTransaction.input) {
+
+        pendingQuickTransaction.input.value = "";
+
+    }
+
+
+    closeAllModals();
+
+    pendingQuickTransaction = null;
 
     renderEverything();
 
     showToast(
-        type === "expense"
-            ? "Expense added"
-            : "Income added"
+        transaction.type === "expense"
+            ? "Expense added."
+            : "Income added."
     );
 
-
-    clearQuickInputs();
 }
 
 
-function clearQuickInputs() {
+/* =========================================================
+   GLOBAL BUTTONS
+   ========================================================= */
 
-    $$(".amount-input").forEach(input => {
+function setupGlobalButtons() {
 
-        input.value = "";
+    const settingsButton =
+        $("#settings-button");
+
+    if (settingsButton) {
+
+        settingsButton.addEventListener(
+            "click",
+            () => switchPage("settings")
+        );
+
+    }
+
+
+    $all("[data-action]").forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            const action = button.dataset.action;
+
+            handleAction(action);
+
+        });
+
+    });
+
+}
+
+
+function handleAction(action) {
+
+    switch (action) {
+
+        case "add-expense-category":
+            openCategoryManager("expense");
+            break;
+
+        case "add-income-category":
+            openCategoryManager("income");
+            break;
+
+        case "accounts":
+            openAccountManager();
+            break;
+
+        case "investments":
+            openInvestmentManager();
+            break;
+
+        case "savings":
+            openSavingManager();
+            break;
+
+        case "edit-investments":
+            openInvestmentManager();
+            break;
+
+        case "edit-savings":
+            openSavingManager();
+            break;
+
+        case "export-json":
+            exportJSON();
+            break;
+
+        case "import-json":
+            importJSON();
+            break;
+
+        case "export-pdf":
+            exportStatementPDF();
+            break;
+
+        case "add-account":
+            openAccountForm();
+            break;
+
+        case "add-investment":
+            openInvestmentForm();
+            break;
+
+        case "add-saving":
+            openSavingForm();
+            break;
+
+        case "add-category":
+            openCategoryManager("expense");
+            break;
+
+        default:
+            console.log("Unknown action:", action);
+
+    }
+
+}
+
+
+/* =========================================================
+   MODALS
+   ========================================================= */
+
+function setupModalEvents() {
+
+    $all(".modal-overlay").forEach(overlay => {
+
+        overlay.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    event.target === overlay
+                ) {
+
+                    closeModal(overlay);
+
+                }
+
+            }
+        );
+
+    });
+
+
+    $all("[data-close-modal]").forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                const modal =
+                    button.closest(".modal-overlay");
+
+                closeModal(modal);
+
+            }
+        );
+
+    });
+
+}
+
+
+function openModal(modal) {
+
+    if (!modal) {
+        return;
+    }
+
+    modal.hidden = false;
+
+    document.body.style.overflow = "hidden";
+
+}
+
+
+function closeModal(modal) {
+
+    if (!modal) {
+        return;
+    }
+
+    modal.hidden = true;
+
+    if (
+        $all(".modal-overlay:not([hidden])").length === 0
+    ) {
+
+        document.body.style.overflow = "";
+
+    }
+
+}
+
+
+function closeAllModals() {
+
+    $all(".modal-overlay").forEach(modal => {
+
+        modal.hidden = true;
+
+    });
+
+    document.body.style.overflow = "";
+
+}
+
+
+/* =========================================================
+   CATEGORY MANAGEMENT
+   ========================================================= */
+
+function openCategoryManager(type) {
+
+    let modal =
+        $("#category-manager-modal");
+
+
+    if (!modal) {
+
+        createCategoryManagerModal();
+
+        modal =
+            $("#category-manager-modal");
+
+    }
+
+
+    modal.dataset.categoryType = type;
+
+
+    renderCategoryManager(type);
+
+    openModal(modal);
+
+}
+
+
+function createCategoryManagerModal() {
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "category-manager-modal";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Categories
+                    </h2>
+
+                    <p>
+                        Add or remove categories
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-created-modal
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                    >
+                        <path
+                            d="M18 6 6 18M6 6l12 12"
+                        />
+                    </svg>
+                </button>
+
+            </div>
+
+            <div
+                class="modal-body"
+                id="category-manager-body"
+            ></div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    overlay.addEventListener(
+        "click",
+        event => {
+
+            if (event.target === overlay) {
+                closeModal(overlay);
+            }
+
+        }
+    );
+
+
+    overlay
+        .querySelector("[data-close-created-modal]")
+        .addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+}
+
+
+function renderCategoryManager(type) {
+
+    const modal =
+        $("#category-manager-modal");
+
+    const body =
+        $("#category-manager-body");
+
+    if (!modal || !body) {
+        return;
+    }
+
+
+    const key =
+        type === "expense"
+            ? "expenses"
+            : "incomes";
+
+
+    const title =
+        modal.querySelector(".modal-title");
+
+
+    title.textContent =
+        type === "expense"
+            ? "Expense Categories"
+            : "Income Categories";
+
+
+    body.innerHTML = `
+
+        <div class="modal-form">
+
+            <div class="form-field">
+
+                <label>
+                    New category
+                </label>
+
+                <input
+                    id="new-category-input"
+                    type="text"
+                    maxlength="40"
+                    placeholder="Category name"
+                    autocomplete="off"
+                >
+
+            </div>
+
+            <button
+                type="button"
+                class="primary-action full-width-action"
+                id="save-category-button"
+            >
+                Add category
+            </button>
+
+            <div class="settings-card">
+
+                <div
+                    class="settings-list"
+                    id="category-list"
+                ></div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    const list =
+        body.querySelector("#category-list");
+
+
+    data.categories[key].forEach(category => {
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "settings-row";
+
+
+        row.innerHTML = `
+
+            <div class="settings-row-info">
+
+                <strong>
+                    ${escapeHTML(category.name)}
+                </strong>
+
+            </div>
+
+            <button
+                type="button"
+                class="secondary-action delete-category-button"
+                data-id="${category.id}"
+            >
+                Delete
+            </button>
+
+        `;
+
+
+        row
+            .querySelector(".delete-category-button")
+            .addEventListener(
+                "click",
+                () => deleteCategory(type, category.id)
+            );
+
+
+        list.appendChild(row);
+
+    });
+
+
+    body
+        .querySelector("#save-category-button")
+        .addEventListener(
+            "click",
+            () => {
+
+                const input =
+                    body.querySelector(
+                        "#new-category-input"
+                    );
+
+                const name =
+                    input.value.trim();
+
+
+                if (!name) {
+
+                    showToast(
+                        "Enter a category name."
+                    );
+
+                    input.focus();
+
+                    return;
+
+                }
+
+
+                const exists =
+                    data.categories[key].some(
+                        category =>
+                            category.name.toLowerCase() ===
+                            name.toLowerCase()
+                    );
+
+
+                if (exists) {
+
+                    showToast(
+                        "Category already exists."
+                    );
+
+                    return;
+
+                }
+
+
+                data.categories[key].push({
+
+                    id: generateId("cat"),
+
+                    name
+
+                });
+
+
+                saveData();
+
+                renderCategoryManager(type);
+
+                renderEverything();
+
+                showToast("Category added.");
+
+            }
+        );
+
+}
+
+
+function deleteCategory(type, categoryId) {
+
+    const key =
+        type === "expense"
+            ? "expenses"
+            : "incomes";
+
+
+    data.categories[key] =
+        data.categories[key].filter(
+            category =>
+                category.id !== categoryId
+        );
+
+
+    saveData();
+
+    renderCategoryManager(type);
+
+    renderEverything();
+
+    showToast("Category deleted.");
+
+}
+
+
+/* =========================================================
+   ACCOUNT MANAGEMENT
+   ========================================================= */
+
+function openAccountManager(type = null) {
+
+    let modal =
+        $("#account-manager-modal");
+
+
+    if (!modal) {
+
+        createAccountManagerModal();
+
+        modal =
+            $("#account-manager-modal");
+
+    }
+
+
+    modal.dataset.accountType =
+        type || "";
+
+
+    renderAccountManager();
+
+    openModal(modal);
+
+}
+
+
+function createAccountManagerModal() {
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "account-manager-modal";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Accounts
+                    </h2>
+
+                    <p>
+                        Manage your cash and bank accounts
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-account-modal
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                    >
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+
+            </div>
+
+            <div
+                class="modal-body"
+                id="account-manager-body"
+            ></div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    overlay.addEventListener(
+        "click",
+        event => {
+
+            if (event.target === overlay) {
+                closeModal(overlay);
+            }
+
+        }
+    );
+
+
+    overlay
+        .querySelector("[data-close-account-modal]")
+        .addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+}
+
+
+function renderAccountManager() {
+
+    const modal =
+        $("#account-manager-modal");
+
+    const body =
+        $("#account-manager-body");
+
+
+    body.innerHTML = `
+
+        <div class="modal-form">
+
+            <button
+                type="button"
+                class="primary-action full-width-action"
+                id="new-account-button"
+            >
+                Add account
+            </button>
+
+            <div class="settings-card">
+
+                <div
+                    class="account-list"
+                    id="account-list"
+                ></div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    const list =
+        body.querySelector("#account-list");
+
+
+    if (data.accounts.length === 0) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                <strong>No accounts yet</strong>
+                <span>
+                    Add one cash and one bank account.
+                </span>
+            </div>
+        `;
+
+    }
+
+
+    data.accounts.forEach(account => {
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "account-item";
+
+
+        const balance =
+            getAccountBalance(account.id);
+
+
+        row.innerHTML = `
+
+            <div class="transaction-icon">
+
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                >
+                    ${
+                        account.type === "cash"
+                        ? `
+                            <rect
+                                x="3"
+                                y="5"
+                                width="18"
+                                height="14"
+                                rx="2"
+                            />
+                            <circle
+                                cx="12"
+                                cy="12"
+                                r="2.5"
+                            />
+                        `
+                        : `
+                            <rect
+                                x="3"
+                                y="5"
+                                width="18"
+                                height="14"
+                                rx="2"
+                            />
+                            <path
+                                d="M3 9h18"
+                            />
+                        `
+                    }
+                </svg>
+
+            </div>
+
+            <div class="account-item-info">
+
+                <span class="account-item-name">
+                    ${escapeHTML(account.name)}
+                </span>
+
+                <span class="account-item-balance">
+                    ${account.type === "cash" ? "Cash" : "Bank"}
+                    · ${formatCurrency(balance)}
+                </span>
+
+            </div>
+
+            ${
+                account.primary
+                    ? `
+                        <span class="primary-badge">
+                            Primary
+                        </span>
+                    `
+                    : ""
+            }
+
+            <button
+                type="button"
+                class="secondary-action edit-account-button"
+                data-id="${account.id}"
+            >
+                Edit
+            </button>
+
+        `;
+
+
+        row
+            .querySelector(".edit-account-button")
+            .addEventListener(
+                "click",
+                () => openAccountForm(account.id)
+            );
+
+
+        list.appendChild(row);
+
+    });
+
+
+    body
+        .querySelector("#new-account-button")
+        .addEventListener(
+            "click",
+            () => openAccountForm()
+        );
+
+}
+
+
+/* =========================================================
+   ACCOUNT FORM
+   ========================================================= */
+
+function openAccountForm(id = null) {
+
+    editingAccountId = id;
+
+
+    let modal =
+        $("#account-form-modal");
+
+
+    if (!modal) {
+
+        createAccountFormModal();
+
+        modal =
+            $("#account-form-modal");
+
+    }
+
+
+    const account =
+        id
+            ? getAccount(id)
+            : null;
+
+
+    modal.querySelector(".modal-title").textContent =
+        account
+            ? "Edit account"
+            : "Add account";
+
+
+    const body =
+        modal.querySelector(".modal-body");
+
+
+    body.innerHTML = `
+
+        <div class="modal-form">
+
+            <div class="form-field">
+
+                <label>
+                    Account name
+                </label>
+
+                <input
+                    id="account-name-input"
+                    type="text"
+                    maxlength="40"
+                    placeholder="e.g. Main Cash"
+                    value="${escapeHTML(account?.name || "")}"
+                >
+
+            </div>
+
+
+            <div class="form-field">
+
+                <label>
+                    Account type
+                </label>
+
+                <select id="account-type-input">
+
+                    <option
+                        value="cash"
+                        ${account?.type === "cash" ? "selected" : ""}
+                    >
+                        Cash
+                    </option>
+
+                    <option
+                        value="bank"
+                        ${account?.type === "bank" ? "selected" : ""}
+                    >
+                        Bank
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <label
+                class="settings-toggle-row"
+                style="padding:0; border:0;"
+            >
+
+                <span class="settings-row-info">
+
+                    <strong>
+                        Primary account
+                    </strong>
+
+                    <span>
+                        Used for quick dashboard entries
+                    </span>
+
+                </span>
+
+                <span class="switch">
+
+                    <input
+                        type="checkbox"
+                        id="account-primary-input"
+                        ${account?.primary ? "checked" : ""}
+                    >
+
+                    <span class="switch-track"></span>
+
+                </span>
+
+            </label>
+
+        </div>
+
+    `;
+
+
+    openModal(modal);
+
+}
+
+
+function createAccountFormModal() {
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "account-form-modal";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Add account
+                    </h2>
+
+                    <p>
+                        Cash or bank account
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-account-form
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                    >
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+
+            </div>
+
+            <div class="modal-body"></div>
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="primary-action"
+                    id="save-account-button"
+                >
+                    Save
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-action"
+                    data-close-account-form
+                >
+                    Cancel
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    $all(
+        "[data-close-account-form]"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+    });
+
+
+    overlay
+        .querySelector("#save-account-button")
+        .addEventListener(
+            "click",
+            saveAccount
+        );
+
+}
+
+
+function saveAccount() {
+
+    const modal =
+        $("#account-form-modal");
+
+
+    const name =
+        modal
+            .querySelector("#account-name-input")
+            .value
+            .trim();
+
+
+    const type =
+        modal
+            .querySelector("#account-type-input")
+            .value;
+
+
+    const primary =
+        modal
+            .querySelector("#account-primary-input")
+            .checked;
+
+
+    if (!name) {
+
+        showToast(
+            "Enter an account name."
+        );
+
+        return;
+
+    }
+
+
+    if (editingAccountId) {
+
+        const account =
+            getAccount(editingAccountId);
+
+
+        account.name = name;
+
+        account.type = type;
+
+        if (primary) {
+            setPrimaryAccount(account.id);
+        }
+
+        account.primary = primary;
+
+    } else {
+
+        const account = {
+
+            id: generateId("account"),
+
+            name,
+
+            type,
+
+            primary: false
+
+        };
+
+
+        data.accounts.push(account);
+
+
+        if (primary) {
+            setPrimaryAccount(account.id);
+        }
+
+    }
+
+
+    saveData();
+
+    closeAllModals();
+
+    renderEverything();
+
+    showToast("Account saved.");
+
+    editingAccountId = null;
+
+}
+
+
+function setPrimaryAccount(id) {
+
+    const selected =
+        getAccount(id);
+
+
+    if (!selected) {
+        return;
+    }
+
+
+    data.accounts.forEach(account => {
+
+        if (account.type === selected.type) {
+
+            account.primary =
+                account.id === id;
+
+        }
 
     });
 
@@ -829,623 +1876,1409 @@ function clearQuickInputs() {
 
 
 /* =========================================================
-   13. ACCOUNT BALANCE
+   INVESTMENTS
    ========================================================= */
 
-function findAccount(accountId) {
+function openInvestmentManager() {
 
-    if (!accountId) return null;
-
-
-    return (
-        data.settings.cashAccounts
-            .find(a => a.id === accountId) ||
-
-        data.settings.bankAccounts
-            .find(a => a.id === accountId)
-    );
-}
+    let modal =
+        $("#investment-manager-modal");
 
 
-function updateAccountBalance(
-    transaction,
-    multiplier
-) {
+    if (!modal) {
 
-    const account =
-        findAccount(
-            transaction.account
-        );
+        createInvestmentManagerModal();
 
-
-    if (!account) return;
-
-
-    if (transaction.type === "expense") {
-
-        account.balance -=
-            transaction.amount *
-            multiplier;
+        modal =
+            $("#investment-manager-modal");
 
     }
 
-    else if (
-        transaction.type === "income"
-    ) {
 
-        account.balance +=
-            transaction.amount *
-            multiplier;
+    renderInvestmentManager();
 
-    }
-
-    else if (
-        transaction.type === "transfer"
-    ) {
-
-        const from =
-            findAccount(
-                transaction.fromAccount
-            );
-
-        const to =
-            findAccount(
-                transaction.toAccount
-            );
-
-
-        if (from) {
-
-            from.balance -=
-                transaction.amount *
-                multiplier;
-
-        }
-
-
-        if (to) {
-
-            to.balance +=
-                transaction.amount *
-                multiplier;
-
-        }
-
-    }
+    openModal(modal);
 
 }
 
 
-/* =========================================================
-   14. SELF TRANSFER
-   ========================================================= */
+function createInvestmentManagerModal() {
 
-function openTransferSheet() {
+    const overlay =
+        document.createElement("div");
 
-    const sheet =
-        getSheet("transferSheet");
+    overlay.id =
+        "investment-manager-modal";
 
-    if (!sheet) return;
+    overlay.className =
+        "modal-overlay";
 
-
-    renderTransferAccounts(
-        sheet
-    );
+    overlay.hidden = true;
 
 
-    openSheet(sheet);
+    overlay.innerHTML = `
 
-    refreshIcons();
-}
+        <div class="modal">
 
+            <div class="modal-header">
 
-function renderTransferAccounts(sheet) {
+                <div>
+                    <h2 class="modal-title">
+                        Investments
+                    </h2>
 
-    const from =
-        $(
-            "[data-transfer-from]",
-            sheet
-        );
+                    <p>
+                        Edit investment values and returns
+                    </p>
+                </div>
 
-    const to =
-        $(
-            "[data-transfer-to]",
-            sheet
-        );
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-investments
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                    >
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
 
+            </div>
 
-    if (from) {
+            <div
+                class="modal-body"
+                id="investment-manager-body"
+            ></div>
 
-        from.innerHTML =
-            getAccountOptions(
-                data.settings.cashAccounts,
-                "Cash"
-            ) +
-            getAccountOptions(
-                data.settings.bankAccounts,
-                "Bank"
-            );
+        </div>
 
-    }
-
-
-    if (to) {
-
-        to.innerHTML =
-            getAccountOptions(
-                data.settings.cashAccounts,
-                "Cash"
-            ) +
-            getAccountOptions(
-                data.settings.bankAccounts,
-                "Bank"
-            );
-
-    }
+    `;
 
 
-    const submit =
-        $(
-            "[data-transfer-submit]",
-            sheet
-        );
+    document.body.appendChild(overlay);
 
 
-    if (
-        submit &&
-        !submit.dataset.bound
-    ) {
-
-        submit.dataset.bound = "true";
-
-        submit.addEventListener(
+    overlay
+        .querySelector("[data-close-investments]")
+        .addEventListener(
             "click",
-            () => {
-
-                const amount =
-                    numberValue(
-                        $(
-                            "[data-transfer-amount]",
-                            sheet
-                        )?.value
-                    );
+            () => closeModal(overlay)
+        );
 
 
-                const fromAccount =
-                    $(
-                        "[data-transfer-from]",
-                        sheet
-                    )?.value;
+    overlay.addEventListener(
+        "click",
+        event => {
 
-
-                const toAccount =
-                    $(
-                        "[data-transfer-to]",
-                        sheet
-                    )?.value;
-
-
-                if (amount <= 0) {
-
-                    showToast(
-                        "Enter an amount"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    !fromAccount ||
-                    !toAccount
-                ) {
-
-                    showToast(
-                        "Select both accounts"
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    fromAccount ===
-                    toAccount
-                ) {
-
-                    showToast(
-                        "Choose different accounts"
-                    );
-
-                    return;
-                }
-
-
-                addTransfer(
-                    fromAccount,
-                    toAccount,
-                    amount
-                );
-
-
-                closeSheet(sheet);
-
+            if (event.target === overlay) {
+                closeModal(overlay);
             }
-        );
+
+        }
+    );
+
+}
+
+
+function renderInvestmentManager() {
+
+    const body =
+        $("#investment-manager-body");
+
+
+    body.innerHTML = `
+
+        <div class="modal-form">
+
+            <button
+                type="button"
+                class="primary-action full-width-action"
+                id="new-investment-button"
+            >
+                Add investment
+            </button>
+
+            <div class="settings-card">
+
+                <div
+                    class="settings-list"
+                    id="investment-list"
+                ></div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    const list =
+        body.querySelector("#investment-list");
+
+
+    if (data.investments.length === 0) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                <strong>No investments</strong>
+                <span>
+                    Add an investment to track it.
+                </span>
+            </div>
+        `;
+
     }
+
+
+    data.investments.forEach(investment => {
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "settings-row";
+
+
+        row.innerHTML = `
+
+            <div class="settings-row-info">
+
+                <strong>
+                    ${escapeHTML(investment.name)}
+                </strong>
+
+                <span>
+                    ${formatCurrency(investment.amount)}
+                    · ${investment.returnPercent}% return
+                </span>
+
+            </div>
+
+            <button
+                type="button"
+                class="secondary-action"
+                data-edit-investment="${investment.id}"
+            >
+                Edit
+            </button>
+
+        `;
+
+
+        row
+            .querySelector(
+                "[data-edit-investment]"
+            )
+            .addEventListener(
+                "click",
+                () => openInvestmentForm(investment.id)
+            );
+
+
+        list.appendChild(row);
+
+    });
+
+
+    body
+        .querySelector("#new-investment-button")
+        .addEventListener(
+            "click",
+            () => openInvestmentForm()
+        );
+
 }
 
 
-function getAccountOptions(
-    accounts,
-    group
-) {
+function openInvestmentForm(id = null) {
 
-    return accounts
-        .map(
-            account =>
-                `<option value="${account.id}">
-                    ${escapeHTML(
-                        group +
-                        " • " +
-                        account.name
-                    )}
-                </option>`
-        )
-        .join("");
+    editingInvestmentId = id;
+
+
+    let modal =
+        $("#investment-form-modal");
+
+
+    if (!modal) {
+
+        createInvestmentFormModal();
+
+        modal =
+            $("#investment-form-modal");
+
+    }
+
+
+    const investment =
+        id
+            ? data.investments.find(
+                item => item.id === id
+            )
+            : null;
+
+
+    modal.querySelector(".modal-title").textContent =
+        investment
+            ? "Edit investment"
+            : "Add investment";
+
+
+    modal.querySelector(".modal-body").innerHTML = `
+
+        <div class="modal-form">
+
+            <div class="form-field">
+
+                <label>
+                    Investment name
+                </label>
+
+                <input
+                    id="investment-name"
+                    type="text"
+                    maxlength="50"
+                    placeholder="e.g. Mutual Fund"
+                    value="${escapeHTML(investment?.name || "")}"
+                >
+
+            </div>
+
+            <div class="form-field">
+
+                <label>
+                    Current amount
+                </label>
+
+                <div class="input-with-unit">
+
+                    <span style="padding-left:13px;">
+                        ₹
+                    </span>
+
+                    <input
+                        id="investment-amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="${investment?.amount ?? ""}"
+                    >
+
+                </div>
+
+            </div>
+
+            <div class="form-field">
+
+                <label>
+                    Return percentage
+                </label>
+
+                <div class="input-with-unit">
+
+                    <input
+                        id="investment-return"
+                        type="number"
+                        step="0.01"
+                        value="${investment?.returnPercent ?? 0}"
+                    >
+
+                    <span>%</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    openModal(modal);
+
 }
 
 
-function addTransfer(
-    fromAccount,
-    toAccount,
-    amount
-) {
+function createInvestmentFormModal() {
 
-    const transaction = {
+    const overlay =
+        document.createElement("div");
 
-        id: uid("tx"),
+    overlay.id =
+        "investment-form-modal";
 
-        type: "transfer",
+    overlay.className =
+        "modal-overlay";
 
-        amount,
-
-        category: "Self Transfer",
-
-        fromAccount,
-
-        toAccount,
-
-        account: fromAccount,
-
-        date: todayISO(),
-
-        note: "",
-
-        createdAt:
-            new Date().toISOString()
-    };
+    overlay.hidden = true;
 
 
-    data.transactions.push(
-        transaction
-    );
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Add investment
+                    </h2>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-investment-form
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <div class="modal-body"></div>
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="primary-action"
+                    id="save-investment"
+                >
+                    Save
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-action"
+                    data-close-investment-form
+                >
+                    Cancel
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
 
 
-    updateAccountBalance(
-        transaction,
-        1
-    );
+    document.body.appendChild(overlay);
 
 
-    saveData();
+    $all(
+        "[data-close-investment-form]"
+    ).forEach(button => {
 
-    renderEverything();
+        button.addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
 
-    showToast(
-        "Transfer completed"
-    );
+    });
+
+
+    overlay
+        .querySelector("#save-investment")
+        .addEventListener(
+            "click",
+            saveInvestment
+        );
+
 }
 
 
-/* =========================================================
-   15. TRANSACTION DELETE
-   ========================================================= */
+function saveInvestment() {
 
-function deleteTransaction(id) {
+    const modal =
+        $("#investment-form-modal");
 
-    const index =
-        data.transactions.findIndex(
-            tx => tx.id === id
+
+    const name =
+        modal
+            .querySelector("#investment-name")
+            .value
+            .trim();
+
+
+    const amount =
+        Number(
+            modal
+                .querySelector("#investment-amount")
+                .value
         );
 
 
-    if (index === -1) return;
+    const returnPercent =
+        Number(
+            modal
+                .querySelector("#investment-return")
+                .value
+        );
 
 
-    const transaction =
-        data.transactions[index];
+    if (!name) {
+
+        showToast(
+            "Enter an investment name."
+        );
+
+        return;
+
+    }
 
 
-    updateAccountBalance(
-        transaction,
-        -1
-    );
+    if (editingInvestmentId) {
+
+        const item =
+            data.investments.find(
+                investment =>
+                    investment.id ===
+                    editingInvestmentId
+            );
 
 
-    data.transactions.splice(
-        index,
-        1
-    );
+        item.name = name;
+
+        item.amount = amount || 0;
+
+        item.returnPercent =
+            returnPercent || 0;
+
+    } else {
+
+        data.investments.push({
+
+            id: generateId("investment"),
+
+            name,
+
+            amount: amount || 0,
+
+            returnPercent:
+                returnPercent || 0
+
+        });
+
+    }
 
 
     saveData();
 
+    closeAllModals();
+
     renderEverything();
 
-    showToast(
-        "Transaction deleted"
-    );
+    showToast("Investment saved.");
+
+    editingInvestmentId = null;
+
 }
 
 
 /* =========================================================
-   16. TRANSACTION EDIT
+   SAVINGS
    ========================================================= */
 
-function editTransaction(id) {
+function openSavingManager() {
+
+    let modal =
+        $("#saving-manager-modal");
+
+
+    if (!modal) {
+
+        createSavingManagerModal();
+
+        modal =
+            $("#saving-manager-modal");
+
+    }
+
+
+    renderSavingManager();
+
+    openModal(modal);
+
+}
+
+
+function createSavingManagerModal() {
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "saving-manager-modal";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Savings
+                    </h2>
+
+                    <p>
+                        Edit savings goals
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-savings
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <div
+                class="modal-body"
+                id="saving-manager-body"
+            ></div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    overlay
+        .querySelector("[data-close-savings]")
+        .addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+
+    overlay.addEventListener(
+        "click",
+        event => {
+
+            if (event.target === overlay) {
+                closeModal(overlay);
+            }
+
+        }
+    );
+
+}
+
+
+function renderSavingManager() {
+
+    const body =
+        $("#saving-manager-body");
+
+
+    body.innerHTML = `
+
+        <div class="modal-form">
+
+            <button
+                type="button"
+                class="primary-action full-width-action"
+                id="new-saving-button"
+            >
+                Add saving goal
+            </button>
+
+            <div class="settings-card">
+
+                <div
+                    class="settings-list"
+                    id="saving-list"
+                ></div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    const list =
+        body.querySelector("#saving-list");
+
+
+    if (data.savings.length === 0) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                <strong>No savings goals</strong>
+                <span>
+                    Add something you want to save for.
+                </span>
+            </div>
+        `;
+
+    }
+
+
+    data.savings.forEach(saving => {
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "settings-row";
+
+
+        row.innerHTML = `
+
+            <div class="settings-row-info">
+
+                <strong>
+                    ${escapeHTML(saving.name)}
+                </strong>
+
+                <span>
+                    Goal ${formatCurrency(saving.goalAmount)}
+                </span>
+
+            </div>
+
+            <button
+                type="button"
+                class="secondary-action"
+                data-edit-saving="${saving.id}"
+            >
+                Edit
+            </button>
+
+        `;
+
+
+        row
+            .querySelector(
+                "[data-edit-saving]"
+            )
+            .addEventListener(
+                "click",
+                () => openSavingForm(saving.id)
+            );
+
+
+        list.appendChild(row);
+
+    });
+
+
+    body
+        .querySelector("#new-saving-button")
+        .addEventListener(
+            "click",
+            () => openSavingForm()
+        );
+
+}
+
+
+function openSavingForm(id = null) {
+
+    editingSavingId = id;
+
+
+    let modal =
+        $("#saving-form-modal");
+
+
+    if (!modal) {
+
+        createSavingFormModal();
+
+        modal =
+            $("#saving-form-modal");
+
+    }
+
+
+    const saving =
+        id
+            ? data.savings.find(
+                item => item.id === id
+            )
+            : null;
+
+
+    modal.querySelector(".modal-title").textContent =
+        saving
+            ? "Edit saving"
+            : "Add saving";
+
+
+    modal.querySelector(".modal-body").innerHTML = `
+
+        <div class="modal-form">
+
+            <div class="form-field">
+
+                <label>
+                    Saving goal
+                </label>
+
+                <input
+                    id="saving-name"
+                    type="text"
+                    maxlength="50"
+                    placeholder="e.g. New MacBook"
+                    value="${escapeHTML(saving?.name || "")}"
+                >
+
+            </div>
+
+            <div class="form-field">
+
+                <label>
+                    Goal amount
+                </label>
+
+                <div class="input-with-unit">
+
+                    <span style="padding-left:13px;">
+                        ₹
+                    </span>
+
+                    <input
+                        id="saving-goal"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="${saving?.goalAmount ?? ""}"
+                    >
+
+                </div>
+
+            </div>
+
+            <div class="form-field">
+
+                <label>
+                    Current saved amount
+                </label>
+
+                <div class="input-with-unit">
+
+                    <span style="padding-left:13px;">
+                        ₹
+                    </span>
+
+                    <input
+                        id="saving-current"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="${saving?.currentAmount ?? 0}"
+                    >
+
+                </div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    openModal(modal);
+
+}
+
+
+function createSavingFormModal() {
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "saving-form-modal";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Add saving
+                    </h2>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-saving-form
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <div class="modal-body"></div>
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="primary-action"
+                    id="save-saving"
+                >
+                    Save
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-action"
+                    data-close-saving-form
+                >
+                    Cancel
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    $all(
+        "[data-close-saving-form]"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+    });
+
+
+    overlay
+        .querySelector("#save-saving")
+        .addEventListener(
+            "click",
+            saveSaving
+        );
+
+}
+
+
+function saveSaving() {
+
+    const modal =
+        $("#saving-form-modal");
+
+
+    const name =
+        modal
+            .querySelector("#saving-name")
+            .value
+            .trim();
+
+
+    const goal =
+        Number(
+            modal
+                .querySelector("#saving-goal")
+                .value
+        );
+
+
+    const current =
+        Number(
+            modal
+                .querySelector("#saving-current")
+                .value
+        );
+
+
+    if (!name) {
+
+        showToast(
+            "Enter a saving goal."
+        );
+
+        return;
+
+    }
+
+
+    if (editingSavingId) {
+
+        const item =
+            data.savings.find(
+                saving =>
+                    saving.id ===
+                    editingSavingId
+            );
+
+
+        item.name = name;
+
+        item.goalAmount =
+            goal || 0;
+
+        item.currentAmount =
+            current || 0;
+
+    } else {
+
+        data.savings.push({
+
+            id: generateId("saving"),
+
+            name,
+
+            goalAmount:
+                goal || 0,
+
+            currentAmount:
+                current || 0
+
+        });
+
+    }
+
+
+    saveData();
+
+    closeAllModals();
+
+    renderEverything();
+
+    showToast("Saving goal saved.");
+
+    editingSavingId = null;
+
+}
+
+
+/* =========================================================
+   TRANSACTION EDIT
+   ========================================================= */
+
+function openTransactionEditor(id) {
 
     const transaction =
         data.transactions.find(
-            tx => tx.id === id
+            item => item.id === id
         );
 
 
-    if (!transaction) return;
-
-
-    openEditTransactionSheet(
-        transaction
-    );
-}
-
-
-function openEditTransactionSheet(
-    transaction
-) {
-
-    const sheet =
-        getSheet(
-            "editTransactionSheet"
-        );
-
-
-    if (!sheet) {
-
-        showToast(
-            "Edit sheet not found"
-        );
-
+    if (!transaction) {
         return;
     }
 
 
-    sheet.dataset.id =
-        transaction.id;
+    editingTransactionId = id;
 
 
-    const amount =
-        $(
-            "[data-edit-amount]",
-            sheet
+    let modal =
+        $("#transaction-edit-modal");
+
+
+    if (!modal) {
+
+        createTransactionEditModal();
+
+        modal =
+            $("#transaction-edit-modal");
+
+    }
+
+
+    const categories =
+        transaction.type === "expense"
+            ? data.categories.expenses
+            : data.categories.incomes;
+
+
+    const categoryOptions =
+        categories
+            .map(
+                category => `
+                    <option
+                        value="${category.id}"
+                        ${category.id === transaction.categoryId ? "selected" : ""}
+                    >
+                        ${escapeHTML(category.name)}
+                    </option>
+                `
+            )
+            .join("");
+
+
+    modal.querySelector(".modal-title").textContent =
+        "Edit transaction";
+
+
+    modal.querySelector(".modal-body").innerHTML = `
+
+        <div class="modal-form">
+
+            <div class="form-field">
+
+                <label>
+                    Amount
+                </label>
+
+                <div class="input-with-unit">
+
+                    <span style="padding-left:13px;">
+                        ₹
+                    </span>
+
+                    <input
+                        id="edit-tx-amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value="${transaction.amount}"
+                    >
+
+                </div>
+
+            </div>
+
+            ${
+                transaction.type === "transfer"
+                ? `
+                    <div class="form-field">
+                        <label>Transfer</label>
+                        <input
+                            type="text"
+                            disabled
+                            value="Self transfer"
+                        >
+                    </div>
+                `
+                : `
+                    <div class="form-field">
+
+                        <label>
+                            Category
+                        </label>
+
+                        <select id="edit-tx-category">
+                            ${categoryOptions}
+                        </select>
+
+                    </div>
+                `
+            }
+
+
+            <div class="form-field">
+
+                <label>
+                    Date
+                </label>
+
+                <input
+                    id="edit-tx-date"
+                    type="date"
+                    value="${transaction.date}"
+                >
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    openModal(modal);
+
+}
+
+
+function createTransactionEditModal() {
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "transaction-edit-modal";
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 class="modal-title">
+                        Edit transaction
+                    </h2>
+
+                    <p>
+                        Modify transaction details
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-close-tx-edit
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <div class="modal-body"></div>
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="primary-action"
+                    id="save-tx-edit"
+                >
+                    Save
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-action"
+                    id="delete-tx-edit"
+                >
+                    Delete
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-action"
+                    data-close-tx-edit
+                >
+                    Cancel
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    $all(
+        "[data-close-tx-edit]"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+    });
+
+
+    overlay
+        .querySelector("#save-tx-edit")
+        .addEventListener(
+            "click",
+            saveTransactionEdit
         );
 
 
-    const category =
-        $(
-            "[data-edit-category]",
-            sheet
+    overlay
+        .querySelector("#delete-tx-edit")
+        .addEventListener(
+            "click",
+            () => {
+
+                if (editingTransactionId) {
+
+                    deleteTransaction(
+                        editingTransactionId
+                    );
+
+                    closeAllModals();
+
+                }
+
+            }
+        );
+
+}
+
+
+function saveTransactionEdit() {
+
+    const transaction =
+        data.transactions.find(
+            item =>
+                item.id ===
+                editingTransactionId
+        );
+
+
+    if (!transaction) {
+        return;
+    }
+
+
+    const modal =
+        $("#transaction-edit-modal");
+
+
+    const amount =
+        Number(
+            modal
+                .querySelector("#edit-tx-amount")
+                .value
         );
 
 
     const date =
-        $(
-            "[data-edit-date]",
-            sheet
-        );
+        modal
+            .querySelector("#edit-tx-date")
+            .value;
 
 
-    const note =
-        $(
-            "[data-edit-note]",
-            sheet
-        );
-
-
-    if (amount)
-        amount.value =
-            transaction.amount;
-
-
-    if (category)
-        category.value =
-            transaction.category;
-
-
-    if (date)
-        date.value =
-            transaction.date;
-
-
-    if (note)
-        note.value =
-            transaction.note || "";
-
-
-    populateEditCategories(
-        sheet,
-        transaction.type
-    );
-
-
-    openSheet(sheet);
-
-    refreshIcons();
-}
-
-
-function populateEditCategories(
-    sheet,
-    type
-) {
-
-    const select =
-        $(
-            "[data-edit-category]",
-            sheet
-        );
-
-
-    if (!select) return;
-
-
-    const categories =
-        type === "income"
-            ? data.settings.incomeCategories
-            : data.settings.expenseCategories;
-
-
-    select.innerHTML =
-        categories
-            .map(
-                category =>
-                    `<option value="${escapeHTML(
-                        category
-                    )}">
-                        ${escapeHTML(
-                            category
-                        )}
-                    </option>`
-            )
-            .join("");
-}
-
-
-function saveEditedTransaction() {
-
-    const sheet =
-        getSheet(
-            "editTransactionSheet"
-        );
-
-
-    if (!sheet) return;
-
-
-    const id =
-        sheet.dataset.id;
-
-
-    const transaction =
-        data.transactions.find(
-            tx => tx.id === id
-        );
-
-
-    if (!transaction) return;
-
-
-    updateAccountBalance(
-        transaction,
-        -1
-    );
-
-
-    const amount =
-        numberValue(
-            $(
-                "[data-edit-amount]",
-                sheet
-            )?.value
-        );
-
-
-    if (amount <= 0) {
-
-        updateAccountBalance(
-            transaction,
-            1
-        );
+    if (!amount || amount <= 0) {
 
         showToast(
-            "Invalid amount"
+            "Enter a valid amount."
         );
 
         return;
+
     }
 
 
-    transaction.amount =
-        amount;
-
-
-    transaction.category =
-        $(
-            "[data-edit-category]",
-            sheet
-        )?.value ||
-        transaction.category;
-
+    transaction.amount = amount;
 
     transaction.date =
-        $(
-            "[data-edit-date]",
-            sheet
-        )?.value ||
-        transaction.date;
+        date || transaction.date;
 
 
-    transaction.note =
-        $(
-            "[data-edit-note]",
-            sheet
-        )?.value ||
-        "";
+    if (transaction.type !== "transfer") {
+
+        const categoryId =
+            modal
+                .querySelector(
+                    "#edit-tx-category"
+                )
+                .value;
 
 
-    updateAccountBalance(
-        transaction,
-        1
-    );
+        const categories =
+            transaction.type === "expense"
+                ? data.categories.expenses
+                : data.categories.incomes;
+
+
+        const category =
+            categories.find(
+                item =>
+                    item.id === categoryId
+            );
+
+
+        if (category) {
+
+            transaction.categoryId =
+                category.id;
+
+            transaction.categoryName =
+                category.name;
+
+        }
+
+    }
+
+
+    saveData();
+
+    closeAllModals();
+
+    renderEverything();
+
+    showToast("Transaction updated.");
+
+    editingTransactionId = null;
+
+}
+
+
+/* =========================================================
+   DELETE TRANSACTION
+   ========================================================= */
+
+function deleteTransaction(id) {
+
+    data.transactions =
+        data.transactions.filter(
+            transaction =>
+                transaction.id !== id
+        );
 
 
     saveData();
 
     renderEverything();
 
-    closeSheet(sheet);
+    showToast("Transaction deleted.");
 
-    showToast(
-        "Transaction updated"
-    );
 }
 
 
 /* =========================================================
-   17. SWIPE TO DELETE
+   SWIPE DELETE
    ========================================================= */
 
-function setupSwipeDelete() {
+function setupSwipeTransactions() {
 
     document.addEventListener(
         "pointerdown",
         startSwipe
     );
 
+    document.addEventListener(
+        "pointermove",
+        moveSwipe
+    );
+
+    document.addEventListener(
+        "pointerup",
+        endSwipe
+    );
+
 }
-
-
-let swipeState = null;
 
 
 function startSwipe(event) {
@@ -1456,12 +3289,17 @@ function startSwipe(event) {
         );
 
 
-    if (!row) return;
+    if (!row) {
+        return;
+    }
 
 
     swipeState = {
 
         row,
+
+        pointerId:
+            event.pointerId,
 
         startX:
             event.clientX,
@@ -1472,36 +3310,28 @@ function startSwipe(event) {
         currentX:
             event.clientX,
 
-        moved: false
+        moved: false,
+
+        horizontal: false
 
     };
-
-
-    row.setPointerCapture?.(
-        event.pointerId
-    );
-
-
-    row.addEventListener(
-        "pointermove",
-        moveSwipe
-    );
-
-
-    row.addEventListener(
-        "pointerup",
-        endSwipe,
-        {
-            once: true
-        }
-    );
 
 }
 
 
 function moveSwipe(event) {
 
-    if (!swipeState) return;
+    if (!swipeState) {
+        return;
+    }
+
+
+    if (
+        event.pointerId !==
+        swipeState.pointerId
+    ) {
+        return;
+    }
 
 
     const dx =
@@ -1515,14 +3345,34 @@ function moveSwipe(event) {
 
 
     if (
-        Math.abs(dy) >
-        Math.abs(dx)
+        Math.abs(dx) < 8 &&
+        Math.abs(dy) < 8
     ) {
         return;
     }
 
 
-    if (dx >= 0) return;
+    if (!swipeState.horizontal) {
+
+        if (Math.abs(dy) > Math.abs(dx)) {
+
+            swipeState = null;
+
+            return;
+
+        }
+
+        swipeState.horizontal = true;
+
+    }
+
+
+    if (!swipeState.horizontal) {
+        return;
+    }
+
+
+    event.preventDefault();
 
 
     swipeState.moved = true;
@@ -1531,2650 +3381,1341 @@ function moveSwipe(event) {
         event.clientX;
 
 
-    const distance =
-        Math.max(
-            -95,
-            dx
-        );
+    let translate =
+        dx;
+
+
+    if (translate > 0) {
+        translate *= 0.25;
+    }
+
+
+    if (translate < -130) {
+
+        translate =
+            -130 +
+            (translate + 130) * 0.15;
+
+    }
+
+
+    swipeState.row.classList.add(
+        "swiping"
+    );
 
 
     swipeState.row.style.transform =
-        `translateX(${distance}px)`;
+        `translateX(${translate}px)`;
+
 }
 
 
 function endSwipe(event) {
 
-    if (!swipeState) return;
+    if (!swipeState) {
+        return;
+    }
 
 
     const state =
         swipeState;
 
 
+    swipeState = null;
+
+
     const dx =
-        state.currentX -
+        event.clientX -
         state.startX;
 
 
-    state.row.removeEventListener(
-        "pointermove",
-        moveSwipe
+    state.row.classList.remove(
+        "swiping"
     );
 
 
-    if (dx < -70) {
-
-        const wrapper =
-            state.row.closest(
-                ".transaction-row-wrapper"
-            );
-
+    if (
+        state.moved &&
+        dx < -90
+    ) {
 
         const id =
-            state.row.dataset.id;
+            state.row.dataset.transactionId;
 
 
-        state.row.style.transform =
-            "translateX(-100%)";
+        state.row.classList.add(
+            "deleting"
+        );
 
 
         setTimeout(
             () => {
 
-                if (id) {
-                    deleteTransaction(id);
-                }
+                deleteTransaction(id);
 
             },
             180
         );
 
-    }
 
-    else {
-
-        state.row.style.transform =
-            "";
+        return;
 
     }
 
 
-    swipeState = null;
+    state.row.style.transform = "";
+
+
+    if (!state.moved) {
+
+        const id =
+            state.row.dataset.transactionId;
+
+
+        openTransactionEditor(id);
+
+    }
+
 }
 
 
 /* =========================================================
-   18. DASHBOARD RENDER
+   RENDER EVERYTHING
+   ========================================================= */
+
+function renderEverything() {
+
+    renderDashboard();
+
+    renderTransactionsPage();
+
+    renderStatistics();
+
+    renderSettings();
+
+}
+
+
+/* =========================================================
+   DASHBOARD
    ========================================================= */
 
 function renderDashboard() {
 
-    const todayExpenses =
-        data.transactions
-            .filter(
-                tx =>
-                    tx.type === "expense" &&
-                    isToday(tx.date)
-            )
-            .reduce(
-                (sum, tx) =>
-                    sum + tx.amount,
-                0
-            );
+    const today =
+        todayString();
+
+
+    const currentMonth =
+        monthString();
+
+
+    const todayTransactions =
+        data.transactions.filter(
+            transaction =>
+                transaction.date === today
+        );
+
+
+    const monthTransactions =
+        data.transactions.filter(
+            transaction =>
+                transaction.date.startsWith(
+                    currentMonth
+                )
+        );
+
+
+    const todayExpense =
+        sumTransactions(
+            todayTransactions,
+            "expense"
+        );
 
 
     const todayIncome =
-        data.transactions
-            .filter(
-                tx =>
-                    tx.type === "income" &&
-                    isToday(tx.date)
-            )
-            .reduce(
-                (sum, tx) =>
-                    sum + tx.amount,
-                0
-            );
+        sumTransactions(
+            todayTransactions,
+            "income"
+        );
 
 
-    const monthExpenses =
-        data.transactions
-            .filter(
-                tx =>
-                    tx.type === "expense" &&
-                    isThisMonth(tx.date)
-            )
-            .reduce(
-                (sum, tx) =>
-                    sum + tx.amount,
-                0
-            );
+    const monthExpense =
+        sumTransactions(
+            monthTransactions,
+            "expense"
+        );
 
 
     const monthIncome =
-        data.transactions
-            .filter(
-                tx =>
-                    tx.type === "income" &&
-                    isThisMonth(tx.date)
-            )
-            .reduce(
-                (sum, tx) =>
-                    sum + tx.amount,
-                0
-            );
+        sumTransactions(
+            monthTransactions,
+            "income"
+        );
 
 
     setText(
-        [
-            "#todayExpense",
-            "[data-today-expense]"
-        ],
-        money(todayExpenses)
+        "#today-expenses",
+        formatCurrency(todayExpense)
+    );
+
+    setText(
+        "#today-income",
+        formatCurrency(todayIncome)
+    );
+
+    setText(
+        "#month-expenses",
+        formatCurrency(monthExpense)
+    );
+
+    setText(
+        "#month-income",
+        formatCurrency(monthIncome)
     );
 
 
     setText(
-        [
-            "#todayIncome",
-            "[data-today-income]"
-        ],
-        money(todayIncome)
-    );
-
-
-    setText(
-        [
-            "#monthExpense",
-            "[data-month-expense]"
-        ],
-        money(monthExpenses)
-    );
-
-
-    setText(
-        [
-            "#monthIncome",
-            "[data-month-income]"
-        ],
-        money(monthIncome)
-    );
-
-
-    setText(
-        [
-            "#netToday",
-            "[data-net-today]"
-        ],
-        money(
+        "#today-net",
+        formatCurrency(
             todayIncome -
-            todayExpenses
+            todayExpense
         )
     );
 
 
     renderTodayTransactions();
 
-    renderInvestmentSummary();
+    renderAccountQuickLabels();
 
-    renderSavingsSummary();
+    renderShiftOverview();
+
+    renderInvestmentDashboard();
+
+    renderSavingDashboard();
+
 }
 
 
-/* =========================================================
-   19. SET TEXT HELPER
-   ========================================================= */
-
-function setText(
-    selectors,
-    value
+function sumTransactions(
+    transactions,
+    type
 ) {
 
-    for (const selector of selectors) {
+    return transactions
+        .filter(
+            transaction =>
+                transaction.type === type
+        )
+        .reduce(
+            (sum, transaction) =>
+                sum +
+                Number(transaction.amount),
+            0
+        );
 
-        const element =
-            $(selector);
+}
 
-        if (element) {
 
-            element.textContent =
-                value;
+function setText(selector, value) {
 
-            return;
-        }
+    const element =
+        $(selector);
+
+    if (element) {
+        element.textContent = value;
     }
+
 }
 
 
 /* =========================================================
-   20. TODAY TRANSACTIONS
+   DASHBOARD TRANSACTIONS
    ========================================================= */
 
 function renderTodayTransactions() {
 
-    const container =
-        $(
-            "#todayTransactions, " +
-            "[data-today-transactions]"
-        );
+    const list =
+        $("#today-transaction-list");
 
 
-    if (!container) return;
+    if (!list) {
+        return;
+    }
 
 
     const transactions =
         data.transactions
             .filter(
-                tx =>
-                    tx.date === todayISO()
+                transaction =>
+                    transaction.date ===
+                    todayString()
             )
             .sort(
                 (a, b) =>
-                    b.createdAt.localeCompare(
-                        a.createdAt
-                    )
+                    b.createdAt -
+                    a.createdAt
             );
 
 
-    container.innerHTML =
-        transactions.length
-            ? transactions
-                .map(
-                    transactionHTML
+    list.innerHTML = "";
+
+
+    if (transactions.length === 0) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                <strong>
+                    No transactions today
+                </strong>
+
+                <span>
+                    Add an expense or income above.
+                </span>
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    transactions.forEach(
+        transaction => {
+
+            list.appendChild(
+                createTransactionElement(
+                    transaction
                 )
-                .join("")
-            : emptyTransactionHTML();
+            );
 
-
-    bindTransactionRows(
-        container
+        }
     );
 
-
-    refreshIcons();
 }
 
 
 /* =========================================================
-   21. ALL TRANSACTIONS
+   TRANSACTION ELEMENT
    ========================================================= */
 
-function renderAllTransactions() {
+function createTransactionElement(
+    transaction
+) {
 
-    const container =
-        $(
-            "#allTransactions, " +
-            "[data-all-transactions]"
-        );
-
-
-    if (!container) return;
+    const row =
+        document.createElement("div");
 
 
-    const sorted =
-        [...data.transactions]
-            .sort(
-                (a, b) =>
-                    b.date.localeCompare(
-                        a.date
-                    ) ||
-                    b.createdAt.localeCompare(
-                        a.createdAt
-                    )
-            );
+    row.className =
+        "transaction-row";
 
 
-    if (!sorted.length) {
-
-        container.innerHTML =
-            emptyTransactionHTML();
-
-        return;
-    }
+    row.dataset.transactionId =
+        transaction.id;
 
 
-    const groups = {};
-
-
-    sorted.forEach(tx => {
-
-        if (!groups[tx.date]) {
-
-            groups[tx.date] = [];
-
-        }
-
-        groups[tx.date].push(tx);
-
-    });
-
-
-    container.innerHTML =
-        Object.entries(groups)
-            .map(
-                ([date, transactions]) =>
-                    `
-                    <div class="transaction-group">
-
-                        <div class="transaction-date-heading">
-                            ${escapeHTML(
-                                formatDate(date)
-                            )}
-                        </div>
-
-                        <div class="all-transactions-list">
-
-                            ${transactions
-                                .map(
-                                    transactionHTML
-                                )
-                                .join("")}
-
-                        </div>
-
-                    </div>
-                    `
+    const account =
+        transaction.accountId
+            ? getAccount(
+                transaction.accountId
             )
-            .join("");
-
-
-    bindTransactionRows(
-        container
-    );
-
-
-    refreshIcons();
-}
-
-
-function transactionHTML(tx) {
-
-    let iconName =
-        "arrow-down-left";
-
-
-    if (tx.type === "income") {
-
-        iconName =
-            "arrow-up-right";
-
-    }
-
-    else if (
-        tx.type === "transfer"
-    ) {
-
-        iconName =
-            "arrow-right-left";
-
-    }
+            : null;
 
 
     let title =
-        tx.category;
+        transaction.categoryName ||
+        "Transaction";
 
 
-    if (tx.type === "transfer") {
+    let meta =
+        account
+            ? account.name
+            : "";
+
+
+    if (transaction.type === "transfer") {
 
         const from =
-            findAccount(
-                tx.fromAccount
+            getAccount(
+                transaction.fromAccountId
             );
 
         const to =
-            findAccount(
-                tx.toAccount
+            getAccount(
+                transaction.toAccountId
             );
 
 
         title =
-            `${from?.name || "Account"} → ${
-                to?.name || "Account"
-            }`;
+            "Self transfer";
+
+
+        meta =
+            `${from?.name || "Account"} → ${to?.name || "Account"}`;
 
     }
 
 
-    const amountPrefix =
-        tx.type === "expense"
-            ? "−"
-            : tx.type === "income"
-                ? "+"
-                : "";
+    let iconPath = `
+        <circle
+            cx="12"
+            cy="12"
+            r="8"
+        />
+    `;
 
 
-    const account =
-        findAccount(
-            tx.account
-        );
+    if (transaction.type === "expense") {
+
+        iconPath = `
+            <path d="M12 6v12"/>
+            <path d="m7 13 5 5 5-5"/>
+        `;
+
+    }
 
 
-    return `
-        <div class="transaction-row-wrapper">
+    if (transaction.type === "income") {
 
-            <div class="transaction-delete-background">
-                Delete
-            </div>
+        iconPath = `
+            <path d="M12 18V6"/>
+            <path d="m7 11 5-5 5 5"/>
+        `;
 
-            <button
-                type="button"
-                class="transaction-row"
-                data-id="${tx.id}"
+    }
+
+
+    if (transaction.type === "transfer") {
+
+        iconPath = `
+            <path d="M7 7h10"/>
+            <path d="m13 3 4 4-4 4"/>
+            <path d="M17 17H7"/>
+            <path d="m11 21-4-4 4-4"/>
+        `;
+
+    }
+
+
+    let amountPrefix = "";
+
+    if (transaction.type === "expense") {
+        amountPrefix = "-";
+    }
+
+    if (transaction.type === "income") {
+        amountPrefix = "+";
+    }
+
+
+    row.innerHTML = `
+
+        <div class="transaction-icon">
+
+            <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
             >
-
-                <span
-                    class="transaction-icon ${tx.type}"
-                >
-                    ${icon(iconName, 18)}
-                </span>
-
-
-                <span class="transaction-info">
-
-                    <span class="transaction-title">
-                        ${escapeHTML(title)}
-                    </span>
-
-                    <span class="transaction-subtitle">
-
-                        ${
-                            tx.type === "transfer"
-                                ? "Self transfer"
-                                : escapeHTML(
-                                    account?.name ||
-                                    "Account"
-                                )
-                        }
-
-                        ${
-                            tx.note
-                                ? " • " +
-                                  escapeHTML(
-                                      tx.note
-                                  )
-                                : ""
-                        }
-
-                    </span>
-
-                </span>
-
-
-                <span
-                    class="transaction-amount ${tx.type}"
-                >
-                    ${amountPrefix}${money(
-                        tx.amount
-                    )}
-                </span>
-
-            </button>
+                ${iconPath}
+            </svg>
 
         </div>
+
+
+        <div class="transaction-info">
+
+            <div class="transaction-title">
+                ${escapeHTML(title)}
+            </div>
+
+            <div class="transaction-meta">
+                ${escapeHTML(meta)}
+                ${transaction.createdAt ? ` · ${formatTime(transaction.createdAt)}` : ""}
+            </div>
+
+        </div>
+
+
+        <div
+            class="transaction-amount ${transaction.type}"
+        >
+            ${amountPrefix}${formatCurrency(transaction.amount)}
+        </div>
+
     `;
+
+
+    return row;
+
 }
 
 
-function bindTransactionRows(
-    container
-) {
+/* =========================================================
+   TRANSACTIONS PAGE
+   ========================================================= */
 
-    $$(".transaction-row", container)
-        .forEach(row => {
+function renderTransactionsPage() {
 
-            row.addEventListener(
-                "click",
-                () => {
-
-                    if (
-                        swipeState?.moved
-                    ) {
-                        return;
-                    }
+    const list =
+        $("#all-transaction-list");
 
 
-                    editTransaction(
-                        row.dataset.id
+    if (!list) {
+        return;
+    }
+
+
+    const transactions =
+        [...data.transactions]
+            .sort(
+                (a, b) =>
+                    new Date(b.date) -
+                    new Date(a.date) ||
+                    b.createdAt -
+                    a.createdAt
+            );
+
+
+    list.innerHTML = "";
+
+
+    if (transactions.length === 0) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                <strong>
+                    No transactions
+                </strong>
+
+                <span>
+                    Your transactions will appear here.
+                </span>
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    const grouped = {};
+
+
+    transactions.forEach(
+        transaction => {
+
+            if (!grouped[transaction.date]) {
+                grouped[transaction.date] = [];
+            }
+
+            grouped[transaction.date].push(
+                transaction
+            );
+
+        }
+    );
+
+
+    Object.keys(grouped)
+        .sort(
+            (a, b) =>
+                new Date(b) -
+                new Date(a)
+        )
+        .forEach(date => {
+
+            const heading =
+                document.createElement("div");
+
+
+            heading.className =
+                "section-heading";
+
+
+            heading.style.marginTop =
+                "22px";
+
+
+            heading.innerHTML = `
+                <h2>
+                    ${formatDate(date)}
+                </h2>
+            `;
+
+
+            list.appendChild(heading);
+
+
+            grouped[date].forEach(
+                transaction => {
+
+                    list.appendChild(
+                        createTransactionElement(
+                            transaction
+                        )
                     );
 
                 }
             );
 
         });
-}
 
-
-function emptyTransactionHTML() {
-
-    return `
-        <div class="empty-state">
-
-            <div class="empty-state-icon">
-                ${icon("receipt", 19)}
-            </div>
-
-            <p>
-                No transactions yet
-            </p>
-
-        </div>
-    `;
 }
 
 
 /* =========================================================
-   22. STATISTICS
+   SHIFT OVERVIEW
    ========================================================= */
 
-function renderStatistics() {
+function renderShiftOverview() {
 
-    const includedAccounts =
-        getStatisticsAccounts();
-
-
-    const transactions =
+    const today =
         data.transactions.filter(
-            tx => {
-
-                if (
-                    tx.type === "transfer"
-                ) {
-                    return false;
-                }
-
-
-                const account =
-                    findAccount(
-                        tx.account
-                    );
-
-
-                return (
-                    account &&
-                    includedAccounts.includes(
-                        account.id
-                    )
-                );
-
-            }
+            transaction =>
+                transaction.date ===
+                todayString()
         );
 
 
     const expenses =
-        transactions
-            .filter(
-                tx =>
-                    tx.type === "expense"
-            );
+        sumTransactions(
+            today,
+            "expense"
+        );
 
 
     const income =
-        transactions
-            .filter(
-                tx =>
-                    tx.type === "income"
-            );
-
-
-    const totalExpense =
-        expenses.reduce(
-            (sum, tx) =>
-                sum + tx.amount,
-            0
+        sumTransactions(
+            today,
+            "income"
         );
 
 
-    const totalIncome =
-        income.reduce(
-            (sum, tx) =>
-                sum + tx.amount,
-            0
-        );
+    const transfers =
+        today.filter(
+            transaction =>
+                transaction.type ===
+                "transfer"
+        ).length;
 
 
     setText(
-        [
-            "#statisticsTotalExpense",
-            "[data-stat-total-expense]"
-        ],
-        money(totalExpense)
+        "#shift-expense",
+        formatCurrency(expenses)
     );
 
 
     setText(
-        [
-            "#statisticsTotalIncome",
-            "[data-stat-total-income]"
-        ],
-        money(totalIncome)
+        "#shift-income",
+        formatCurrency(income)
     );
 
 
     setText(
-        [
-            "#statisticsBalance",
-            "[data-stat-balance]"
-        ],
-        money(
-            totalIncome -
-            totalExpense
-        )
+        "#shift-transfers",
+        String(transfers)
     );
 
-
-    renderCategoryStatistics(
-        expenses
-    );
-
-
-    renderIncomeStatistics(
-        income
-    );
-
-
-    renderInsights(
-        expenses,
-        income
-    );
-}
-
-
-function getStatisticsAccounts() {
-
-    const accounts = [];
-
-
-    if (
-        data.settings
-            .statisticAccounts
-            .cash
-    ) {
-
-        accounts.push(
-            ...data.settings.cashAccounts
-                .map(a => a.id)
-        );
-
-    }
-
-
-    if (
-        data.settings
-            .statisticAccounts
-            .bank
-    ) {
-
-        accounts.push(
-            ...data.settings.bankAccounts
-                .map(a => a.id)
-        );
-
-    }
-
-
-    return accounts;
-}
-
-
-function renderCategoryStatistics(
-    expenses
-) {
-
-    const container =
-        $(
-            "#expenseStatistics, " +
-            "[data-expense-statistics]"
-        );
-
-
-    if (!container) return;
-
-
-    const totals = {};
-
-
-    expenses.forEach(tx => {
-
-        totals[tx.category] =
-            (
-                totals[tx.category] ||
-                0
-            ) + tx.amount;
-
-    });
-
-
-    const entries =
-        Object.entries(totals)
-            .sort(
-                (a, b) =>
-                    b[1] - a[1]
-            );
-
-
-    container.innerHTML =
-        entries.length
-            ? entries
-                .map(
-                    ([name, amount]) =>
-                        `
-                        <div class="statistics-row">
-
-                            <div class="statistics-row-left">
-
-                                <div class="statistics-row-name">
-                                    ${escapeHTML(name)}
-                                </div>
-
-                                <div class="statistics-row-subtitle">
-                                    ${getPercentage(
-                                        amount,
-                                        expenses
-                                            .reduce(
-                                                (
-                                                    s,
-                                                    tx
-                                                ) =>
-                                                    s +
-                                                    tx.amount,
-                                                0
-                                            )
-                                    )}% of expenses
-                                </div>
-
-                            </div>
-
-                            <div class="statistics-row-value">
-                                ${money(amount)}
-                            </div>
-
-                        </div>
-                        `
-                )
-                .join("")
-            : emptyStatisticsHTML();
-
-}
-
-
-function renderIncomeStatistics(
-    income
-) {
-
-    const container =
-        $(
-            "#incomeStatistics, " +
-            "[data-income-statistics]"
-        );
-
-
-    if (!container) return;
-
-
-    const totals = {};
-
-
-    income.forEach(tx => {
-
-        totals[tx.category] =
-            (
-                totals[tx.category] ||
-                0
-            ) + tx.amount;
-
-    });
-
-
-    const entries =
-        Object.entries(totals)
-            .sort(
-                (a, b) =>
-                    b[1] - a[1]
-            );
-
-
-    container.innerHTML =
-        entries.length
-            ? entries
-                .map(
-                    ([name, amount]) =>
-                        `
-                        <div class="statistics-row">
-
-                            <div class="statistics-row-left">
-
-                                <div class="statistics-row-name">
-                                    ${escapeHTML(name)}
-                                </div>
-
-                            </div>
-
-                            <div class="statistics-row-value">
-                                ${money(amount)}
-                            </div>
-
-                        </div>
-                        `
-                )
-                .join("")
-            : emptyStatisticsHTML();
-}
-
-
-function getPercentage(
-    value,
-    total
-) {
-
-    if (!total) return "0";
-
-    return (
-        value / total * 100
-    ).toFixed(1);
-}
-
-
-function emptyStatisticsHTML() {
-
-    return `
-        <div class="empty-state">
-            <p>No statistics yet</p>
-        </div>
-    `;
 }
 
 
 /* =========================================================
-   23. INSIGHTS
+   INVESTMENT DASHBOARD
    ========================================================= */
 
-function renderInsights(
-    expenses,
-    income
-) {
+function renderInvestmentDashboard() {
 
-    const container =
-        $(
-            "#statisticsInsights, " +
-            "[data-statistics-insights]"
-        );
-
-
-    if (!container) return;
-
-
-    const expenseTotal =
-        expenses.reduce(
-            (sum, tx) =>
-                sum + tx.amount,
-            0
-        );
-
-
-    const incomeTotal =
-        income.reduce(
-            (sum, tx) =>
-                sum + tx.amount,
-            0
-        );
-
-
-    const biggestExpense =
-        [...expenses]
-            .sort(
-                (a, b) =>
-                    b.amount -
-                    a.amount
-            )[0];
-
-
-    const biggestIncome =
-        [...income]
-            .sort(
-                (a, b) =>
-                    b.amount -
-                    a.amount
-            )[0];
-
-
-    container.innerHTML = `
-
-        <div class="insight-row">
-
-            <span>
-                Largest expense
-            </span>
-
-            <strong>
-                ${
-                    biggestExpense
-                        ? escapeHTML(
-                            biggestExpense.category
-                        ) +
-                          " • " +
-                          money(
-                              biggestExpense.amount
-                          )
-                        : "—"
-                }
-            </strong>
-
-        </div>
-
-
-        <div class="insight-row">
-
-            <span>
-                Largest income
-            </span>
-
-            <strong>
-                ${
-                    biggestIncome
-                        ? escapeHTML(
-                            biggestIncome.category
-                        ) +
-                          " • " +
-                          money(
-                              biggestIncome.amount
-                          )
-                        : "—"
-                }
-            </strong>
-
-        </div>
-
-
-        <div class="insight-row">
-
-            <span>
-                Transactions
-            </span>
-
-            <strong>
-                ${expenses.length + income.length}
-            </strong>
-
-        </div>
-
-
-        <div class="insight-row">
-
-            <span>
-                Saving rate
-            </span>
-
-            <strong>
-                ${
-                    incomeTotal > 0
-                        ? (
-                            (
-                                incomeTotal -
-                                expenseTotal
-                            ) /
-                            incomeTotal *
-                            100
-                        ).toFixed(1) +
-                          "%"
-                        : "—"
-                }
-            </strong>
-
-        </div>
-
-    `;
-}
-
-
-/* =========================================================
-   24. INVESTMENTS
-   ========================================================= */
-
-function renderInvestmentSummary() {
-
-    const investments =
-        data.settings.investments;
-
-
-    const total =
-        investments.reduce(
-            (sum, item) =>
+    const amount =
+        data.investments.reduce(
+            (sum, investment) =>
                 sum +
-                numberValue(
-                    item.amount
+                Number(investment.amount || 0),
+            0
+        );
+
+
+    const returnAmount =
+        data.investments.reduce(
+            (sum, investment) =>
+                sum +
+                (
+                    Number(investment.amount || 0) *
+                    Number(investment.returnPercent || 0) /
+                    100
                 ),
             0
         );
 
 
-    const returns =
-        investments.reduce(
-            (sum, item) => {
-
-                const amount =
-                    numberValue(
-                        item.amount
-                    );
-
-                const percentage =
-                    Number(
-                        item.returnPercentage
-                    ) || 0;
-
-                return (
-                    sum +
-                    amount *
-                    percentage /
-                    100
-                );
-
-            },
-            0
-        );
-
-
     setText(
-        [
-            "#investmentTotal",
-            "[data-investment-total]"
-        ],
-        money(total)
+        "#dashboard-investments",
+        formatCurrency(amount)
     );
 
 
     setText(
-        [
-            "#investmentReturn",
-            "[data-investment-return]"
-        ],
-        money(returns)
+        "#dashboard-investment-return",
+        `Estimated return ${formatCurrency(returnAmount)}`
     );
+
 }
 
 
 /* =========================================================
-   25. SAVINGS
+   SAVING DASHBOARD
    ========================================================= */
 
-function renderSavingsSummary() {
-
-    const savings =
-        data.settings.savings;
-
+function renderSavingDashboard() {
 
     const current =
-        savings.reduce(
-            (sum, item) =>
+        data.savings.reduce(
+            (sum, saving) =>
                 sum +
-                numberValue(
-                    item.current
-                ),
+                Number(saving.currentAmount || 0),
             0
         );
 
 
-    const goals =
-        savings.reduce(
-            (sum, item) =>
+    const goal =
+        data.savings.reduce(
+            (sum, saving) =>
                 sum +
-                numberValue(
-                    item.goal
-                ),
+                Number(saving.goalAmount || 0),
             0
         );
-
-
-    const percentage =
-        goals > 0
-            ? Math.min(
-                100,
-                current /
-                goals *
-                100
-            )
-            : 0;
 
 
     setText(
-        [
-            "#savingsCurrent",
-            "[data-savings-current]"
-        ],
-        money(current)
+        "#dashboard-savings",
+        formatCurrency(current)
     );
 
 
     setText(
-        [
-            "#savingsGoal",
-            "[data-savings-goal]"
-        ],
-        money(goals)
+        "#dashboard-saving-goal",
+        `Goal ${formatCurrency(goal)}`
     );
 
 
     const progress =
-        $(
-            "#savingsProgress span, " +
-            "[data-savings-progress]"
-        );
+        goal > 0
+            ? Math.min(
+                100,
+                (current / goal) * 100
+            )
+            : 0;
 
 
-    if (progress) {
+    const bar =
+        $("#savings-progress");
 
-        progress.style.width =
-            `${percentage}%`;
+
+    if (bar) {
+
+        bar.style.width =
+            progress + "%";
 
     }
+
 }
 
 
 /* =========================================================
-   26. SETTINGS RENDER
+   ACCOUNT QUICK LABELS
+   ========================================================= */
+
+function renderAccountQuickLabels() {
+
+    $all(
+        "[data-account-label]"
+    ).forEach(element => {
+
+        const type =
+            element.dataset.accountLabel;
+
+
+        const account =
+            getPrimaryAccount(type);
+
+
+        element.textContent =
+            account
+                ? account.name
+                : `Add primary ${type}`;
+
+    });
+
+}
+
+
+/* =========================================================
+   STATISTICS
+   ========================================================= */
+
+function renderStatistics() {
+
+    const transactions =
+        getStatisticsTransactions();
+
+
+    const expenses =
+        sumTransactions(
+            transactions,
+            "expense"
+        );
+
+
+    const incomes =
+        sumTransactions(
+            transactions,
+            "income"
+        );
+
+
+    const net =
+        incomes -
+        expenses;
+
+
+    const daysWithData =
+        new Set(
+            transactions.map(
+                transaction =>
+                    transaction.date
+            )
+        ).size;
+
+
+    const averageDailyIncome =
+        daysWithData > 0
+            ? incomes / daysWithData
+            : 0;
+
+
+    const averageDailyExpense =
+        daysWithData > 0
+            ? expenses / daysWithData
+            : 0;
+
+
+    setText(
+        "#stat-total-expense",
+        formatCurrency(expenses)
+    );
+
+
+    setText(
+        "#stat-total-income",
+        formatCurrency(incomes)
+    );
+
+
+    setText(
+        "#stat-net",
+        formatCurrency(net)
+    );
+
+
+    setText(
+        "#stat-average-income",
+        formatCurrency(
+            averageDailyIncome
+        )
+    );
+
+
+    setText(
+        "#stat-average-expense",
+        formatCurrency(
+            averageDailyExpense
+        )
+    );
+
+
+    setText(
+        "#stat-transaction-count",
+        String(transactions.length)
+    );
+
+
+    renderStatisticsBreakdown();
+
+}
+
+
+function getStatisticsTransactions() {
+
+    return data.transactions.filter(
+        transaction => {
+
+            if (
+                transaction.type ===
+                "expense" ||
+                transaction.type ===
+                "income"
+            ) {
+
+                const account =
+                    getAccount(
+                        transaction.accountId
+                    );
+
+
+                if (!account) {
+                    return true;
+                }
+
+
+                if (
+                    account.type ===
+                    "cash"
+                ) {
+
+                    return data.settings
+                        .statistics
+                        .cash;
+
+                }
+
+
+                if (
+                    account.type ===
+                    "bank"
+                ) {
+
+                    return data.settings
+                        .statistics
+                        .bank;
+
+                }
+
+            }
+
+
+            if (
+                transaction.type ===
+                "transfer"
+            ) {
+
+                return false;
+
+            }
+
+
+            return true;
+
+        }
+    );
+
+}
+
+
+function renderStatisticsBreakdown() {
+
+    const container =
+        $("#statistics-breakdown");
+
+
+    if (!container) {
+        return;
+    }
+
+
+    const transactions =
+        getStatisticsTransactions();
+
+
+    const expensesByCategory = {};
+
+
+    transactions
+        .filter(
+            transaction =>
+                transaction.type ===
+                "expense"
+        )
+        .forEach(
+            transaction => {
+
+                const name =
+                    transaction.categoryName ||
+                    "Other";
+
+
+                expensesByCategory[name] =
+                    (
+                        expensesByCategory[name] ||
+                        0
+                    ) +
+                    Number(
+                        transaction.amount
+                    );
+
+            }
+        );
+
+
+    const entries =
+        Object.entries(
+            expensesByCategory
+        ).sort(
+            (a, b) =>
+                b[1] - a[1]
+        );
+
+
+    container.innerHTML = "";
+
+
+    entries.forEach(
+        ([category, amount]) => {
+
+            const row =
+                document.createElement("div");
+
+
+            row.className =
+                "breakdown-row";
+
+
+            row.innerHTML = `
+
+                <span>
+                    ${escapeHTML(category)}
+                </span>
+
+                <strong>
+                    ${formatCurrency(amount)}
+                </strong>
+
+            `;
+
+
+            container.appendChild(row);
+
+        }
+    );
+
+
+    if (entries.length === 0) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                <strong>
+                    No expense data
+                </strong>
+
+                <span>
+                    Statistics will appear after transactions.
+                </span>
+            </div>
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   SETTINGS
    ========================================================= */
 
 function renderSettings() {
 
-    renderCategorySettings(
-        "expense"
-    );
+    renderStatisticsToggles();
 
-    renderCategorySettings(
-        "income"
-    );
+    renderSettingsAccountSummary();
 
-    renderAccounts(
-        "cash"
-    );
-
-    renderAccounts(
-        "bank"
-    );
-
-    renderInvestmentSettings();
-
-    renderSavingsSettings();
-
-    renderStatisticToggles();
 }
 
 
-function renderCategorySettings(
-    type
-) {
+function renderStatisticsToggles() {
 
-    const selector =
-        type === "expense"
-            ? "#expenseCategories, [data-expense-categories]"
-            : "#incomeCategories, [data-income-categories]";
+    const mappings = {
 
+        cash:
+            "#statistics-cash-toggle",
+
+        bank:
+            "#statistics-bank-toggle",
+
+        investments:
+            "#statistics-investments-toggle",
+
+        savings:
+            "#statistics-savings-toggle"
+
+    };
+
+
+    Object.entries(mappings)
+        .forEach(
+            ([key, selector]) => {
+
+                const input =
+                    $(selector);
+
+
+                if (!input) {
+                    return;
+                }
+
+
+                input.checked =
+                    Boolean(
+                        data.settings
+                            .statistics[key]
+                    );
+
+
+                input.onchange =
+                    () => {
+
+                        data.settings
+                            .statistics[key] =
+                            input.checked;
+
+
+                        saveData();
+
+                        renderStatistics();
+
+                    };
+
+            }
+        );
+
+}
+
+
+function renderSettingsAccountSummary() {
 
     const container =
-        $(selector);
+        $("#settings-account-summary");
 
 
-    if (!container) return;
-
-
-    const categories =
-        type === "expense"
-            ? data.settings.expenseCategories
-            : data.settings.incomeCategories;
-
-
-    container.innerHTML =
-        categories
-            .map(
-                category =>
-                    `
-                    <div class="managed-row">
-
-                        <div class="managed-row-main">
-
-                            <div class="managed-row-title">
-                                ${escapeHTML(category)}
-                            </div>
-
-                        </div>
-
-                        <button
-                            type="button"
-                            class="row-icon-button"
-                            data-edit-category="${escapeHTML(
-                                category
-                            )}"
-                            data-category-type="${type}"
-                        >
-                            ${icon("pencil", 16)}
-                        </button>
-
-                        <button
-                            type="button"
-                            class="row-icon-button danger"
-                            data-delete-category="${escapeHTML(
-                                category
-                            )}"
-                            data-category-type="${type}"
-                        >
-                            ${icon("trash-2", 16)}
-                        </button>
-
-                    </div>
-                    `
-            )
-            .join("");
-
-
-    bindCategoryActions(
-        container
-    );
-
-    refreshIcons();
-}
-
-
-function bindCategoryActions(
-    container
-) {
-
-    $$(
-        "[data-delete-category]",
-        container
-    )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    const category =
-                        button.dataset
-                            .deleteCategory;
-
-                    const type =
-                        button.dataset
-                            .categoryType;
-
-
-                    deleteCategory(
-                        type,
-                        category
-                    );
-
-                }
-            );
-
-        });
-
-
-    $$(
-        "[data-edit-category]",
-        container
-    )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    editCategory(
-                        button.dataset
-                            .categoryType,
-
-                        button.dataset
-                            .editCategory
-                    );
-
-                }
-            );
-
-        });
-}
-
-
-function addCategory(type) {
-
-    const name =
-        prompt(
-            type === "expense"
-                ? "New expense category"
-                : "New income category"
-        );
-
-
-    if (!name) return;
-
-
-    const clean =
-        name.trim();
-
-
-    if (!clean) return;
-
-
-    const list =
-        type === "expense"
-            ? data.settings.expenseCategories
-            : data.settings.incomeCategories;
-
-
-    if (
-        list.some(
-            item =>
-                item.toLowerCase() ===
-                clean.toLowerCase()
-        )
-    ) {
-
-        showToast(
-            "Category already exists"
-        );
-
+    if (!container) {
         return;
     }
 
 
-    list.push(clean);
+    const cash =
+        getPrimaryAccount("cash");
 
 
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Category added"
-    );
-}
+    const bank =
+        getPrimaryAccount("bank");
 
 
-function editCategory(
-    type,
-    oldName
-) {
+    container.innerHTML = `
 
-    const newName =
-        prompt(
-            "Rename category",
-            oldName
-        );
+        <div class="breakdown-row">
 
+            <span>
+                Primary cash
+            </span>
 
-    if (!newName) return;
+            <strong>
+                ${
+                    cash
+                        ? escapeHTML(cash.name)
+                        : "Not set"
+                }
+            </strong>
 
-
-    const clean =
-        newName.trim();
-
-
-    if (!clean) return;
+        </div>
 
 
-    const list =
-        type === "expense"
-            ? data.settings.expenseCategories
-            : data.settings.incomeCategories;
+        <div class="breakdown-row">
 
+            <span>
+                Primary bank
+            </span>
 
-    const index =
-        list.indexOf(oldName);
+            <strong>
+                ${
+                    bank
+                        ? escapeHTML(bank.name)
+                        : "Not set"
+                }
+            </strong>
 
+        </div>
 
-    if (index === -1) return;
+    `;
 
-
-    list[index] =
-        clean;
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Category renamed"
-    );
-}
-
-
-function deleteCategory(
-    type,
-    category
-) {
-
-    const list =
-        type === "expense"
-            ? data.settings.expenseCategories
-            : data.settings.incomeCategories;
-
-
-    if (list.length <= 1) {
-
-        showToast(
-            "Keep at least one category"
-        );
-
-        return;
-    }
-
-
-    const used =
-        data.transactions.some(
-            tx =>
-                tx.category ===
-                category
-        );
-
-
-    if (used) {
-
-        const confirmDelete =
-            confirm(
-                `"${category}" is already used by transactions. Delete the category anyway?`
-            );
-
-
-        if (!confirmDelete) return;
-    }
-
-
-    const index =
-        list.indexOf(category);
-
-
-    if (index !== -1) {
-
-        list.splice(
-            index,
-            1
-        );
-
-    }
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Category deleted"
-    );
 }
 
 
 /* =========================================================
-   27. ACCOUNTS
+   SETUP CHECK
    ========================================================= */
 
-function renderAccounts(
-    type
-) {
+function checkInitialSetup() {
 
-    const selector =
-        type === "cash"
-            ? "#cashAccounts, [data-cash-accounts]"
-            : "#bankAccounts, [data-bank-accounts]";
+    const cash =
+        getPrimaryAccount("cash");
 
 
-    const container =
-        $(selector);
+    const bank =
+        getPrimaryAccount("bank");
 
 
-    if (!container) return;
+    const card =
+        $("#setup-required-card");
 
 
-    const accounts =
-        type === "cash"
-            ? data.settings.cashAccounts
-            : data.settings.bankAccounts;
+    if (!card) {
+        return;
+    }
 
 
-    container.innerHTML =
-        accounts
-            .map(
-                account =>
-                    `
-                    <div class="settings-account-row">
+    if (!cash || !bank) {
 
-                        <div class="settings-account-info">
+        card.hidden = false;
 
-                            <div class="settings-account-name">
-                                ${escapeHTML(
-                                    account.name
-                                )}
-                            </div>
+    } else {
 
-                            <div class="settings-account-meta">
-                                ${money(
-                                    account.balance
-                                )}
-                            </div>
+        card.hidden = true;
 
-                        </div>
+    }
 
-                        ${
-                            account.primary
-                                ? `
-                                    <span class="primary-badge">
-                                        Primary
-                                    </span>
-                                `
-                                : `
-                                    <button
-                                        type="button"
-                                        class="row-icon-button"
-                                        data-primary-account="${account.id}"
-                                        data-account-type="${type}"
-                                        title="Make primary"
-                                    >
-                                        ${icon(
-                                            "star",
-                                            16
-                                        )}
-                                    </button>
-                                `
-                        }
-
-                        <button
-                            type="button"
-                            class="row-icon-button"
-                            data-edit-account="${account.id}"
-                            data-account-type="${type}"
-                        >
-                            ${icon("pencil", 16)}
-                        </button>
-
-                        ${
-                            accounts.length > 1
-                                ? `
-                                    <button
-                                        type="button"
-                                        class="row-icon-button danger"
-                                        data-delete-account="${account.id}"
-                                        data-account-type="${type}"
-                                    >
-                                        ${icon(
-                                            "trash-2",
-                                            16
-                                        )}
-                                    </button>
-                                `
-                                : ""
-                        }
-
-                    </div>
-                    `
-            )
-            .join("");
-
-
-    bindAccountActions(
-        container
-    );
-
-    refreshIcons();
 }
 
 
-function bindAccountActions(
-    container
-) {
+/* =========================================================
+   KEYBOARD BEHAVIOR
+   ========================================================= */
 
-    $$(
-        "[data-primary-account]",
-        container
-    )
-        .forEach(button => {
+function setupKeyboardBehavior() {
 
-            button.addEventListener(
-                "click",
-                () => {
+    document.addEventListener(
+        "keydown",
+        event => {
 
-                    setPrimaryAccount(
-                        button.dataset
-                            .accountType,
+            if (
+                event.key === "Escape"
+            ) {
 
-                        button.dataset
-                            .primaryAccount
-                    );
+                closeAllModals();
 
-                }
-            );
-
-        });
-
-
-    $$(
-        "[data-edit-account]",
-        container
-    )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    editAccount(
-                        button.dataset
-                            .accountType,
-
-                        button.dataset
-                            .editAccount
-                    );
-
-                }
-            );
-
-        });
-
-
-    $$(
-        "[data-delete-account]",
-        container
-    )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    deleteAccount(
-                        button.dataset
-                            .accountType,
-
-                        button.dataset
-                            .deleteAccount
-                    );
-
-                }
-            );
-
-        });
-}
-
-
-function addAccount(type) {
-
-    const name =
-        prompt(
-            type === "cash"
-                ? "Cash account name"
-                : "Bank account name"
-        );
-
-
-    if (!name) return;
-
-
-    const clean =
-        name.trim();
-
-
-    if (!clean) return;
-
-
-    const accounts =
-        type === "cash"
-            ? data.settings.cashAccounts
-            : data.settings.bankAccounts;
-
-
-    accounts.push({
-
-        id: uid(type),
-
-        name: clean,
-
-        balance: 0,
-
-        primary:
-            accounts.length === 0,
-
-        countInStats: true
-
-    });
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Account added"
-    );
-}
-
-
-function editAccount(
-    type,
-    id
-) {
-
-    const accounts =
-        type === "cash"
-            ? data.settings.cashAccounts
-            : data.settings.bankAccounts;
-
-
-    const account =
-        accounts.find(
-            a => a.id === id
-        );
-
-
-    if (!account) return;
-
-
-    const name =
-        prompt(
-            "Account name",
-            account.name
-        );
-
-
-    if (!name) return;
-
-
-    account.name =
-        name.trim();
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Account updated"
-    );
-}
-
-
-function setPrimaryAccount(
-    type,
-    id
-) {
-
-    const accounts =
-        type === "cash"
-            ? data.settings.cashAccounts
-            : data.settings.bankAccounts;
-
-
-    accounts.forEach(
-        account => {
-
-            account.primary =
-                account.id === id;
+            }
 
         }
     );
 
 
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Primary account changed"
-    );
-}
-
-
-function deleteAccount(
-    type,
-    id
-) {
-
-    const accounts =
-        type === "cash"
-            ? data.settings.cashAccounts
-            : data.settings.bankAccounts;
-
-
-    const account =
-        accounts.find(
-            a => a.id === id
-        );
-
-
-    if (!account) return;
-
-
-    if (account.primary) {
-
-        showToast(
-            "Choose another primary account first"
-        );
-
-        return;
-    }
-
-
-    const used =
-        data.transactions.some(
-            tx =>
-                tx.account === id ||
-                tx.fromAccount === id ||
-                tx.toAccount === id
-        );
-
-
-    if (used) {
-
-        showToast(
-            "This account is used by transactions"
-        );
-
-        return;
-    }
-
-
-    const index =
-        accounts.indexOf(account);
-
-
-    accounts.splice(
-        index,
-        1
-    );
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Account deleted"
-    );
-}
-
-
-/* =========================================================
-   28. INVESTMENTS
-   ========================================================= */
-
-function renderInvestmentSettings() {
-
-    const container =
-        $(
-            "#investmentList, " +
-            "[data-investment-list]"
-        );
-
-
-    if (!container) return;
-
-
-    const investments =
-        data.settings.investments;
-
-
-    container.innerHTML =
-        investments.length
-            ? investments
-                .map(
-                    item =>
-                        `
-                        <div class="investment-row">
-
-                            <div class="investment-row-main">
-
-                                <div class="investment-row-title">
-                                    ${escapeHTML(
-                                        item.name
-                                    )}
-                                </div>
-
-                                <div class="investment-row-subtitle">
-                                    Return %
-                                </div>
-
-                            </div>
-
-                            <input
-                                type="number"
-                                step="0.01"
-                                value="${Number(
-                                    item.returnPercentage
-                                ) || 0}"
-                                data-investment-return="${item.id}"
-                            >
-
-                            <button
-                                type="button"
-                                class="row-icon-button danger"
-                                data-delete-investment="${item.id}"
-                            >
-                                ${icon(
-                                    "trash-2",
-                                    16
-                                )}
-                            </button>
-
-                        </div>
-                        `
-                )
-                .join("")
-            : emptyManagedHTML(
-                "No investments"
-            );
-
-
-    $$(
-        "[data-investment-return]",
-        container
-    )
-        .forEach(input => {
-
-            input.addEventListener(
-                "change",
-                () => {
-
-                    const item =
-                        investments.find(
-                            investment =>
-                                investment.id ===
-                                input.dataset
-                                    .investmentReturn
-                        );
-
-
-                    if (!item) return;
-
-
-                    item.returnPercentage =
-                        numberValue(
-                            input.value
-                        );
-
-
-                    saveData();
-
-                    renderInvestmentSummary();
-
-                }
-            );
-
-        });
-
-
-    $$(
-        "[data-delete-investment]",
-        container
-    )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    data.settings.investments =
-                        data.settings.investments
-                            .filter(
-                                item =>
-                                    item.id !==
-                                    button.dataset
-                                        .deleteInvestment
-                            );
-
-
-                    saveData();
-
-                    renderEverything();
-
-                    showToast(
-                        "Investment deleted"
-                    );
-
-                }
-            );
-
-        });
-
-
-    refreshIcons();
-}
-
-
-function addInvestment() {
-
-    const name =
-        prompt(
-            "Investment name"
-        );
-
-
-    if (!name) return;
-
-
-    const amount =
-        numberValue(
-            prompt(
-                "Current amount"
-            )
-        );
-
-
-    if (amount < 0) return;
-
-
-    const returnPercentage =
-        numberValue(
-            prompt(
-                "Expected / actual return percentage"
-            )
-        );
-
-
-    data.settings.investments.push({
-
-        id: uid("investment"),
-
-        name: name.trim(),
-
-        amount,
-
-        returnPercentage
-
-    });
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Investment added"
-    );
-}
-
-
-function openInvestments() {
-
-    const sheet =
-        getSheet(
-            "investmentsSheet"
-        );
-
-
-    if (!sheet) {
-
-        showPage(
-            "dashboard"
-        );
-
-        return;
-    }
-
-
-    renderInvestmentSettings();
-
-    openSheet(sheet);
-}
-
-
-/* =========================================================
-   29. SAVINGS
-   ========================================================= */
-
-function renderSavingsSettings() {
-
-    const container =
-        $(
-            "#savingsList, " +
-            "[data-savings-list]"
-        );
-
-
-    if (!container) return;
-
-
-    const savings =
-        data.settings.savings;
-
-
-    container.innerHTML =
-        savings.length
-            ? savings
-                .map(
-                    item =>
-                        `
-                        <div class="savings-row">
-
-                            <div class="savings-row-main">
-
-                                <div class="savings-row-title">
-                                    ${escapeHTML(
-                                        item.name
-                                    )}
-                                </div>
-
-                                <div class="savings-row-subtitle">
-                                    ${money(
-                                        item.current
-                                    )} saved
-                                </div>
-
-                            </div>
-
-                            <input
-                                type="number"
-                                value="${Number(
-                                    item.goal
-                                ) || 0}"
-                                data-savings-goal="${item.id}"
-                            >
-
-                            <button
-                                type="button"
-                                class="row-icon-button danger"
-                                data-delete-savings="${item.id}"
-                            >
-                                ${icon(
-                                    "trash-2",
-                                    16
-                                )}
-                            </button>
-
-                        </div>
-                        `
-                )
-                .join("")
-            : emptyManagedHTML(
-                "No savings goals"
-            );
-
-
-    $$(
-        "[data-savings-goal]",
-        container
-    )
-        .forEach(input => {
-
-            input.addEventListener(
-                "change",
-                () => {
-
-                    const item =
-                        savings.find(
-                            saving =>
-                                saving.id ===
-                                input.dataset
-                                    .savingsGoal
-                        );
-
-
-                    if (!item) return;
-
-
-                    item.goal =
-                        numberValue(
-                            input.value
-                        );
-
-
-                    saveData();
-
-                    renderSavingsSummary();
-
-                }
-            );
-
-        });
-
-
-    $$(
-        "[data-delete-savings]",
-        container
-    )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    data.settings.savings =
-                        data.settings.savings
-                            .filter(
-                                item =>
-                                    item.id !==
-                                    button.dataset
-                                        .deleteSavings
-                            );
-
-
-                    saveData();
-
-                    renderEverything();
-
-                    showToast(
-                        "Savings goal deleted"
-                    );
-
-                }
-            );
-
-        });
-
-
-    refreshIcons();
-}
-
-
-function addSavings() {
-
-    const name =
-        prompt(
-            "What are you saving for?"
-        );
-
-
-    if (!name) return;
-
-
-    const goal =
-        numberValue(
-            prompt(
-                "Goal amount"
-            )
-        );
-
-
-    if (goal <= 0) {
-
-        showToast(
-            "Enter a valid goal"
-        );
-
-        return;
-    }
-
-
-    const current =
-        numberValue(
-            prompt(
-                "Current saved amount",
-                "0"
-            )
-        );
-
-
-    data.settings.savings.push({
-
-        id: uid("saving"),
-
-        name: name.trim(),
-
-        current,
-
-        goal
-
-    });
-
-
-    saveData();
-
-    renderEverything();
-
-    showToast(
-        "Savings goal added"
-    );
-}
-
-
-function openSavings() {
-
-    const sheet =
-        getSheet(
-            "savingsSheet"
-        );
-
-
-    if (!sheet) {
-
-        showPage(
-            "dashboard"
-        );
-
-        return;
-    }
-
-
-    renderSavingsSettings();
-
-    openSheet(sheet);
-}
-
-
-/* =========================================================
-   30. STATISTIC TOGGLES
-   ========================================================= */
-
-function renderStatisticToggles() {
-
-    const settings =
-        data.settings
-            .statisticAccounts;
-
-
-    $$(
-        "[data-stat-toggle]"
-    )
-        .forEach(toggle => {
-
-            const key =
-                toggle.dataset
-                    .statToggle;
+    document.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.key !== "Enter" &&
+                event.key !== "Tab"
+            ) {
+                return;
+            }
+
+
+            const input =
+                event.target;
 
 
             if (
-                Object.prototype
-                    .hasOwnProperty
-                    .call(settings, key)
+                !input.matches(
+                    ".expense-amount-input, .income-amount-input"
+                )
             ) {
-
-                toggle.checked =
-                    settings[key];
-
+                return;
             }
 
-        });
-}
 
-
-/* =========================================================
-   31. SETTINGS EVENTS
-   ========================================================= */
-
-function setupSettings() {
-
-    const headerSettingsButton = document.getElementById("headerSettingsButton");
-
-    if (headerSettingsButton && !headerSettingsButton.dataset.bound) {
-        headerSettingsButton.dataset.bound = "true";
-        headerSettingsButton.addEventListener("click", () => {
-            showPage("settingsPage");
-        });
-    }
-
-    document.addEventListener(
-        "change",
-        event => {
-
-            const toggle =
-                event.target.closest(
-                    "[data-stat-toggle]"
-                );
-
-
-            if (!toggle) return;
-
-
-            const key =
-                toggle.dataset.statToggle;
-
-
-            data.settings
-                .statisticAccounts[key] =
-                    toggle.checked;
-
-
-            saveData();
-
-            renderStatistics();
+            event.preventDefault();
 
         }
     );
 
-
-    document.addEventListener(
-        "click",
-        event => {
-
-            const addCategoryButton =
-                event.target.closest(
-                    "[data-add-category]"
-                );
-
-
-            if (addCategoryButton) {
-
-                addCategory(
-                    addCategoryButton
-                        .dataset
-                        .addCategory
-                );
-
-                return;
-            }
-
-
-            const addAccountButton =
-                event.target.closest(
-                    "[data-add-account]"
-                );
-
-
-            if (addAccountButton) {
-
-                addAccount(
-                    addAccountButton
-                        .dataset
-                        .addAccount
-                );
-
-                return;
-            }
-
-
-            const addInvestmentButton =
-                event.target.closest(
-                    "[data-add-investment]"
-                );
-
-
-            if (addInvestmentButton) {
-
-                addInvestment();
-
-                return;
-            }
-
-
-            const addSavingsButton =
-                event.target.closest(
-                    "[data-add-savings]"
-                );
-
-
-            if (addSavingsButton) {
-
-                addSavings();
-
-                return;
-            }
-
-
-            const investmentButton =
-                event.target.closest(
-                    "[data-edit-investments]"
-                );
-
-
-            if (investmentButton) {
-
-                openInvestments();
-
-                return;
-            }
-
-
-            const savingsButton =
-                event.target.closest(
-                    "[data-edit-savings]"
-                );
-
-
-            if (savingsButton) {
-
-                openSavings();
-
-                return;
-            }
-
-        }
-    );
 }
 
 
 /* =========================================================
-   32. IMPORT / EXPORT
+   IMPORT / EXPORT JSON
    ========================================================= */
-
-function setupImportExport() {
-
-    const exportButton =
-        $(
-            "[data-export-json]"
-        );
-
-
-    if (exportButton) {
-
-        exportButton.addEventListener(
-            "click",
-            exportJSON
-        );
-
-    }
-
-
-    const importButton =
-        $(
-            "[data-import-json]"
-        );
-
-
-    if (importButton) {
-
-        importButton.addEventListener(
-            "click",
-            () => {
-
-                const input =
-                    $(
-                        "#jsonImportInput"
-                    );
-
-
-                if (input) {
-
-                    input.click();
-
-                }
-
-            }
-        );
-
-    }
-
-
-    const fileInput =
-        $(
-            "#jsonImportInput"
-        );
-
-
-    if (fileInput) {
-
-        fileInput.addEventListener(
-            "change",
-            importJSON
-        );
-
-    }
-
-
-    const pdfButton =
-        $(
-            "[data-export-pdf]"
-        );
-
-
-    if (pdfButton) {
-
-        pdfButton.addEventListener(
-            "click",
-            exportPDF
-        );
-
-    }
-}
-
 
 function exportJSON() {
 
-    const blob =
-        new Blob(
-            [
-                JSON.stringify(
-                    data,
-                    null,
-                    2
-                )
-            ],
-            {
-                type:
-                    "application/json"
-            }
+    const json =
+        JSON.stringify(
+            data,
+            null,
+            2
         );
 
 
-    downloadBlob(
-        blob,
-        `trackit-backup-${todayISO()}.json`
+    downloadFile(
+        json,
+        `trackit-backup-${todayString()}.json`,
+        "application/json"
     );
 
 
     showToast(
-        "Backup exported"
+        "Backup exported."
     );
+
 }
 
 
-function importJSON(event) {
+function importJSON() {
 
-    const file =
-        event.target.files?.[0];
-
-
-    if (!file) return;
+    const input =
+        document.createElement("input");
 
 
-    const reader =
-        new FileReader();
+    input.type =
+        "file";
 
 
-    reader.onload =
-        function () {
+    input.accept =
+        "application/json,.json";
+
+
+    input.addEventListener(
+        "change",
+        async () => {
+
+            const file =
+                input.files?.[0];
+
+
+            if (!file) {
+                return;
+            }
+
 
             try {
 
+                const text =
+                    await file.text();
+
+
                 const imported =
-                    JSON.parse(
-                        reader.result
-                    );
+                    JSON.parse(text);
 
 
                 if (
                     !imported ||
-                    !Array.isArray(
-                        imported.transactions
-                    )
+                    typeof imported !==
+                    "object"
                 ) {
 
                     throw new Error(
-                        "Invalid TrackIt file"
+                        "Invalid file"
                     );
 
                 }
@@ -4190,811 +4731,405 @@ function importJSON(event) {
 
                 renderEverything();
 
+                closeAllModals();
+
                 showToast(
-                    "Data imported"
+                    "Backup imported."
+                );
+
+            } catch (error) {
+
+                console.error(error);
+
+                showToast(
+                    "Invalid TrackIt backup."
                 );
 
             }
 
-            catch (error) {
-
-                console.error(
-                    error
-                );
-
-                showToast(
-                    "Invalid backup file"
-                );
-
-            }
-
-        };
+        }
+    );
 
 
-    reader.readAsText(file);
+    input.click();
 
-    event.target.value = "";
 }
 
 
-function downloadBlob(
-    blob,
-    filename
+function downloadFile(
+    content,
+    filename,
+    type
 ) {
 
-    const url =
-        URL.createObjectURL(
-            blob
+    const blob =
+        new Blob(
+            [content],
+            { type }
         );
+
+
+    const url =
+        URL.createObjectURL(blob);
 
 
     const link =
-        document.createElement(
-            "a"
-        );
+        document.createElement("a");
 
 
     link.href = url;
 
-    link.download =
-        filename;
+    link.download = filename;
 
-
-    document.body.appendChild(
-        link
-    );
-
+    document.body.appendChild(link);
 
     link.click();
-
 
     link.remove();
 
 
     setTimeout(
-        () => {
-            URL.revokeObjectURL(url);
-        },
+        () => URL.revokeObjectURL(url),
         1000
     );
+
 }
 
 
 /* =========================================================
-   33. PDF EXPORT
+   PDF EXPORT
    ========================================================= */
 
-function exportPDF() {
+function exportStatementPDF() {
 
-    if (
-        typeof window.jspdf ===
-        "undefined"
-    ) {
+    /*
+     * Uses the browser's print dialog.
+     * User can select "Save as PDF".
+     */
+
+    const printWindow =
+        window.open(
+            "",
+            "_blank"
+        );
+
+
+    if (!printWindow) {
 
         showToast(
-            "PDF library not loaded"
+            "Allow pop-ups to export PDF."
         );
 
         return;
+
     }
 
 
-    const {
-        jsPDF
-    } = window.jspdf;
-
-
-    const doc =
-        new jsPDF();
-
-
-    const expenses =
-        data.transactions
-            .filter(
-                tx =>
-                    tx.type === "expense"
-            );
-
-
-    const income =
-        data.transactions
-            .filter(
-                tx =>
-                    tx.type === "income"
-            );
-
-
-    const expenseTotal =
-        expenses.reduce(
-            (sum, tx) =>
-                sum + tx.amount,
-            0
-        );
-
-
-    const incomeTotal =
-        income.reduce(
-            (sum, tx) =>
-                sum + tx.amount,
-            0
-        );
-
-
-    doc.setFontSize(24);
-
-    doc.text(
-        "TrackIt",
-        20,
-        22
-    );
-
-
-    doc.setFontSize(10);
-
-    doc.setTextColor(
-        100,
-        100,
-        100
-    );
-
-
-    doc.text(
-        `Statement • ${formatDate(
-            todayISO()
-        )}`,
-        20,
-        30
-    );
-
-
-    doc.setTextColor(
-        20,
-        20,
-        20
-    );
-
-
-    doc.setFontSize(13);
-
-    doc.text(
-        "Summary",
-        20,
-        46
-    );
-
-
-    doc.setFontSize(11);
-
-    doc.text(
-        `Total income: ${money(
-            incomeTotal
-        )}`,
-        20,
-        56
-    );
-
-
-    doc.text(
-        `Total expenses: ${money(
-            expenseTotal
-        )}`,
-        20,
-        64
-    );
-
-
-    doc.text(
-        `Net: ${money(
-            incomeTotal -
-            expenseTotal
-        )}`,
-        20,
-        72
-    );
-
-
-    let y = 88;
-
-
-    doc.setFontSize(13);
-
-    doc.text(
-        "Transactions",
-        20,
-        y
-    );
-
-
-    y += 10;
-
-
-    doc.setFontSize(9);
-
-
-    const sorted =
+    const transactions =
         [...data.transactions]
             .sort(
                 (a, b) =>
-                    b.date.localeCompare(
-                        a.date
-                    )
+                    new Date(a.date) -
+                    new Date(b.date)
             );
 
 
-    sorted.forEach(tx => {
-
-        if (y > 275) {
-
-            doc.addPage();
-
-            y = 20;
-
-        }
-
-
-        const sign =
-            tx.type === "expense"
-                ? "-"
-                : tx.type === "income"
-                    ? "+"
-                    : "";
-
-
-        const title =
-            tx.type === "transfer"
-                ? "Self Transfer"
-                : tx.category;
-
-
-        doc.text(
-            formatShortDate(
-                tx.date
-            ),
-            20,
-            y
+    const expense =
+        sumTransactions(
+            transactions,
+            "expense"
         );
 
 
-        doc.text(
-            title,
-            50,
-            y
+    const income =
+        sumTransactions(
+            transactions,
+            "income"
         );
 
 
-        doc.text(
-            `${sign}${money(
-                tx.amount
-            )}`,
-            155,
-            y
-        );
+    const net =
+        income - expense;
 
 
-        y += 7;
+    const rows =
+        transactions
+            .map(
+                transaction => {
 
-    });
-
-
-    doc.save(
-        `trackit-statement-${todayISO()}.pdf`
-    );
-
-
-    showToast(
-        "PDF exported"
-    );
-}
+                    const account =
+                        transaction.accountId
+                            ? getAccount(
+                                transaction.accountId
+                            )
+                            : null;
 
 
-/* =========================================================
-   34. GLOBAL BUTTONS
-   ========================================================= */
+                    return `
 
-function setupGlobalButtons() {
+                        <tr>
 
-    document.addEventListener(
-        "click",
-        event => {
+                            <td>
+                                ${escapeHTML(transaction.date)}
+                            </td>
 
-            const transfer =
-                event.target.closest(
-                    "[data-open-transfer]"
-                );
+                            <td>
+                                ${escapeHTML(
+                                    transaction.categoryName ||
+                                    (
+                                        transaction.type ===
+                                        "transfer"
+                                            ? "Self transfer"
+                                            : transaction.type
+                                    )
+                                )}
+                            </td>
 
+                            <td>
+                                ${escapeHTML(
+                                    account?.name ||
+                                    "-"
+                                )}
+                            </td>
 
-            if (transfer) {
+                            <td>
+                                ${escapeHTML(
+                                    transaction.type
+                                )}
+                            </td>
 
-                openTransferSheet();
+                            <td>
+                                ₹${formatNumber(
+                                    transaction.amount
+                                )}
+                            </td>
 
-                return;
-            }
+                        </tr>
 
-
-            const edit =
-                event.target.closest(
-                    "[data-save-edit]"
-                );
-
-
-            if (edit) {
-
-                saveEditedTransaction();
-
-                return;
-            }
-
-
-            const close =
-                event.target.closest(
-                    "[data-close-sheet]"
-                );
-
-
-            if (close) {
-
-                const sheet =
-                    close.closest(
-                        ".bottom-sheet"
-                    );
-
-
-                if (sheet) {
-
-                    closeSheet(
-                        sheet
-                    );
+                    `;
 
                 }
-
-                return;
-            }
-
-
-            const closeDialog =
-                event.target.closest(
-                    "[data-close-dialog]"
-                );
+            )
+            .join("");
 
 
-            if (closeDialog) {
+    printWindow.document.write(`
 
-                const dialog =
-                    closeDialog.closest(
-                        ".dialog"
-                    );
+        <!DOCTYPE html>
 
+        <html>
 
-                if (dialog) {
+        <head>
 
-                    closeDialogElement(
-                        dialog
-                    );
+            <title>
+                TrackIt Statement
+            </title>
 
+            <style>
+
+                body {
+                    font-family:
+                        -apple-system,
+                        BlinkMacSystemFont,
+                        "Segoe UI",
+                        sans-serif;
+
+                    padding: 35px;
+                    color: #1d1d1f;
                 }
 
-                return;
-            }
-
-        }
-    );
-}
-
-
-/* =========================================================
-   35. SHEETS
-   ========================================================= */
-
-function getSheet(id) {
-
-    return (
-        document.getElementById(id) ||
-        $(`.${id}`)
-    );
-}
-
-
-function openSheet(sheet) {
-
-    if (!sheet) return;
-
-
-    sheet.classList.add(
-        "active"
-    );
-
-
-    const overlay =
-        $(
-            ".overlay"
-        );
-
-
-    if (overlay) {
-
-        overlay.classList.add(
-            "active"
-        );
-
-    }
-
-
-    document.body.style.overflow =
-        "hidden";
-}
-
-
-function closeSheet(sheet) {
-
-    if (!sheet) return;
-
-
-    sheet.classList.remove(
-        "active"
-    );
-
-
-    const activeSheets =
-        $$(".bottom-sheet.active");
-
-
-    if (!activeSheets.length) {
-
-        const overlay =
-            $(".overlay");
-
-
-        if (overlay) {
-
-            overlay.classList.remove(
-                "active"
-            );
-
-        }
-
-
-        document.body.style.overflow =
-            "";
-    }
-}
-
-
-function setupOverlay() {
-
-    const overlay =
-        $(".overlay");
-
-
-    if (!overlay) return;
-
-
-    overlay.addEventListener(
-        "click",
-        () => {
-
-            $$(".bottom-sheet.active")
-                .forEach(
-                    closeSheet
-                );
-
-
-            $$(".dialog.active")
-                .forEach(
-                    closeDialogElement
-                );
-
-        }
-    );
-}
-
-
-/* =========================================================
-   36. DIALOGS
-   ========================================================= */
-
-function openDialog(id) {
-
-    const dialog =
-        document.getElementById(id);
-
-
-    if (!dialog) return;
-
-
-    dialog.classList.add(
-        "active"
-    );
-
-
-    document.body.style.overflow =
-        "hidden";
-}
-
-
-function closeDialogElement(
-    dialog
-) {
-
-    if (!dialog) return;
-
-
-    dialog.classList.remove(
-        "active"
-    );
-
-
-    if (
-        !$(".bottom-sheet.active") &&
-        !$(".dialog.active")
-    ) {
-
-        document.body.style.overflow =
-            "";
-
-    }
-}
-
-
-/* =========================================================
-   37. CATEGORY PICKER
-   ========================================================= */
-
-function openCategoryPicker(
-    type,
-    amount,
-    sourceInput
-) {
-
-    const sheet =
-        document.createElement(
-            "div"
-        );
-
-
-    sheet.className =
-        "bottom-sheet active";
-
-
-    sheet.innerHTML = `
-
-        <div class="sheet-handle"></div>
-
-        <div class="sheet-header">
-
-            <div>
-                <h2>
-                    ${
-                        type === "expense"
-                            ? "Expense category"
-                            : "Income category"
-                    }
-                </h2>
-
-                <p>
-                    ${money(amount)}
-                </p>
+                h1 {
+                    margin-bottom: 5px;
+                }
+
+                .date {
+                    color: #777;
+                    margin-bottom: 25px;
+                }
+
+                .summary {
+                    display: flex;
+                    gap: 30px;
+                    margin-bottom: 30px;
+                }
+
+                .summary div {
+                    padding: 15px;
+                    border: 1px solid #ddd;
+                    border-radius: 10px;
+                    min-width: 130px;
+                }
+
+                .label {
+                    display: block;
+                    color: #777;
+                    font-size: 12px;
+                    margin-bottom: 7px;
+                }
+
+                strong {
+                    font-size: 18px;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                th,
+                td {
+                    text-align: left;
+                    padding: 10px 8px;
+                    border-bottom: 1px solid #ddd;
+                    font-size: 12px;
+                }
+
+                th {
+                    background: #f4f3f6;
+                }
+
+            </style>
+
+        </head>
+
+        <body>
+
+            <h1>
+                TrackIt Statement
+            </h1>
+
+            <div class="date">
+                Generated ${formatDate(todayString())}
             </div>
 
-            <button
-                class="sheet-close"
-                type="button"
-            >
-                ×
-            </button>
+            <div class="summary">
 
-        </div>
+                <div>
 
-        <div class="category-grid">
+                    <span class="label">
+                        Total Income
+                    </span>
 
-            ${
-                (
-                    type === "expense"
-                        ? data.settings.expenseCategories
-                        : data.settings.incomeCategories
-                )
-                    .map(
-                        (category, index) =>
-                            `
-                            <button
-                                class="category-button"
-                                data-index="${index}"
-                            >
+                    <strong>
+                        ${formatCurrency(income)}
+                    </strong>
 
-                                <span class="category-button-icon">
-                                    ${icon(
-                                        getCategoryIcon(
-                                            category
-                                        ),
-                                        16
-                                    )}
-                                </span>
+                </div>
 
-                                <span class="category-button-name">
-                                    ${escapeHTML(
-                                        category
-                                    )}
-                                </span>
+                <div>
 
-                            </button>
-                            `
-                    )
-                    .join("")
-            }
+                    <span class="label">
+                        Total Expenses
+                    </span>
 
-        </div>
+                    <strong>
+                        ${formatCurrency(expense)}
+                    </strong>
 
-    `;
+                </div>
+
+                <div>
+
+                    <span class="label">
+                        Net
+                    </span>
+
+                    <strong>
+                        ${formatCurrency(net)}
+                    </strong>
+
+                </div>
+
+            </div>
 
 
-    document.body.appendChild(
-        sheet
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th>
+                            Account
+                        </th>
+
+                        <th>
+                            Type
+                        </th>
+
+                        <th>
+                            Amount
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    ${rows}
+
+                </tbody>
+
+            </table>
+
+        </body>
+
+        </html>
+
+    `);
+
+
+    printWindow.document.close();
+
+
+    setTimeout(
+        () => {
+
+            printWindow.focus();
+
+            printWindow.print();
+
+        },
+        400
     );
 
-
-    const overlay =
-        $(".overlay");
-
-
-    overlay?.classList.add(
-        "active"
-    );
-
-
-    sheet.querySelector(
-        ".sheet-close"
-    )
-        ?.addEventListener(
-            "click",
-            () => {
-
-                sheet.remove();
-
-                overlay?.classList.remove(
-                    "active"
-                );
-
-            }
-        );
-
-
-    $$(".category-button", sheet)
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    const categories =
-                        type === "expense"
-                            ? data.settings.expenseCategories
-                            : data.settings.incomeCategories;
-
-
-                    addTransaction({
-
-                        type,
-
-                        amount,
-
-                        category:
-                            categories[
-                                Number(
-                                    button.dataset
-                                        .index
-                                )
-                            ],
-
-                        account:
-                            getPrimaryAccountId(
-                                "cash"
-                            )
-
-                    });
-
-
-                    sheet.remove();
-
-                    overlay?.classList.remove(
-                        "active"
-                    );
-
-                }
-            );
-
-        });
-
-
-    refreshIcons();
-}
-
-
-function getPrimaryAccountId(
-    type
-) {
-
-    const accounts =
-        type === "bank"
-            ? data.settings.bankAccounts
-            : data.settings.cashAccounts;
-
-
-    return (
-        accounts.find(
-            account =>
-                account.primary
-        )?.id ||
-        accounts[0]?.id ||
-        null
-    );
 }
 
 
 /* =========================================================
-   38. COMPLETE RENDER
-   ========================================================= */
-
-function renderEverything() {
-
-    renderDashboard();
-
-    renderAllTransactions();
-
-    renderStatistics();
-
-    renderSettings();
-
-    renderInvestmentSummary();
-
-    renderSavingsSummary();
-
-    refreshIcons();
-}
-
-
-/* =========================================================
-   39. EMPTY MANAGED
-   ========================================================= */
-
-function emptyManagedHTML(
-    text
-) {
-
-    return `
-        <div class="empty-state">
-            <p>${escapeHTML(text)}</p>
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   40. TOAST
+   TOAST
    ========================================================= */
 
 let toastTimer = null;
 
 
-function showToast(
-    message
-) {
+function showToast(message) {
 
     let toast =
-        $(".toast");
+        $("#trackit-toast");
 
 
     if (!toast) {
 
         toast =
-            document.createElement(
-                "div"
-            );
+            document.createElement("div");
+
+        toast.id =
+            "trackit-toast";
 
         toast.className =
             "toast";
 
-        document.body.appendChild(
-            toast
-        );
+        document.body.appendChild(toast);
 
     }
 
@@ -5004,7 +5139,7 @@ function showToast(
 
 
     toast.classList.add(
-        "active"
+        "show"
     );
 
 
@@ -5018,133 +5153,286 @@ function showToast(
             () => {
 
                 toast.classList.remove(
-                    "active"
+                    "show"
                 );
 
             },
             2200
         );
+
 }
 
 
 /* =========================================================
-   41. KEYBOARD / ENTER SUPPORT
+   MODAL HELPERS
    ========================================================= */
 
-document.addEventListener(
-    "keydown",
-    event => {
+function createBasicModal(
+    id,
+    title,
+    subtitle = ""
+) {
 
-        if (
-            event.key !== "Escape"
-        ) {
-            return;
+    const overlay =
+        document.createElement("div");
+
+    overlay.id = id;
+
+    overlay.className =
+        "modal-overlay";
+
+    overlay.hidden = true;
+
+
+    overlay.innerHTML = `
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h2 class="modal-title">
+                        ${escapeHTML(title)}
+                    </h2>
+
+                    ${
+                        subtitle
+                            ? `
+                                <p>
+                                    ${escapeHTML(subtitle)}
+                                </p>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+                <button
+                    type="button"
+                    class="icon-button modal-close-button"
+                    data-basic-close
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <div class="modal-body"></div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+
+    overlay
+        .querySelector("[data-basic-close]")
+        .addEventListener(
+            "click",
+            () => closeModal(overlay)
+        );
+
+
+    overlay.addEventListener(
+        "click",
+        event => {
+
+            if (event.target === overlay) {
+                closeModal(overlay);
+            }
+
         }
+    );
 
 
-        $$(".bottom-sheet.active")
-            .forEach(
-                closeSheet
-            );
+    return overlay;
 
-
-        $$(".dialog.active")
-            .forEach(
-                closeDialogElement
-            );
-
-    }
-);
+}
 
 
 /* =========================================================
-   42. PREVENT INVALID QUICK AMOUNTS
+   FALLBACK ELEMENT IDS
    ========================================================= */
 
-document.addEventListener(
-    "input",
-    event => {
+function ensureDashboardElements() {
 
-        const input =
-            event.target.closest(
-                ".amount-input, " +
-                ".quick-expense-input, " +
-                ".quick-income-input"
-            );
+    /*
+     * This function intentionally does not
+     * replace your HTML.
+     *
+     * It simply allows the JavaScript to
+     * work with either the current TrackIt
+     * HTML structure or slightly older
+     * versions of the same interface.
+     */
 
-
-        if (!input) return;
-
-
-        input.value =
-            input.value.replace(
-                /[^0-9.]/
-                ,
-                ""
-            );
-
-
-        const parts =
-            input.value.split(".");
-
-
-        if (parts.length > 2) {
-
-            input.value =
-                parts[0] +
-                "." +
-                parts.slice(1).join("");
-
-        }
-
-    }
-);
+}
 
 
 /* =========================================================
-   43. PUBLIC DEBUG HELPER
+   SAFETY: REQUIRED ACCOUNTS
+   ========================================================= */
+
+function canCreateTransaction(type, accountId) {
+
+    const account =
+        getAccount(accountId);
+
+
+    if (!account) {
+
+        showToast(
+            "Account not found."
+        );
+
+        return false;
+
+    }
+
+
+    if (
+        type === "expense" ||
+        type === "income"
+    ) {
+
+        return true;
+
+    }
+
+
+    return false;
+
+}
+
+
+/* =========================================================
+   TRANSFER CREATION
+   ========================================================= */
+
+function createTransfer(
+    fromAccountId,
+    toAccountId,
+    amount
+) {
+
+    if (
+        !fromAccountId ||
+        !toAccountId
+    ) {
+
+        showToast(
+            "Select both accounts."
+        );
+
+        return false;
+
+    }
+
+
+    if (
+        fromAccountId ===
+        toAccountId
+    ) {
+
+        showToast(
+            "Choose two different accounts."
+        );
+
+        return false;
+
+    }
+
+
+    amount =
+        Number(amount);
+
+
+    if (
+        !amount ||
+        amount <= 0
+    ) {
+
+        showToast(
+            "Enter a valid amount."
+        );
+
+        return false;
+
+    }
+
+
+    const from =
+        getAccount(fromAccountId);
+
+
+    const to =
+        getAccount(toAccountId);
+
+
+    if (!from || !to) {
+        return false;
+    }
+
+
+    data.transactions.push({
+
+        id:
+            generateId("tx"),
+
+        type:
+            "transfer",
+
+        amount,
+
+        fromAccountId,
+
+        toAccountId,
+
+        date:
+            todayString(),
+
+        createdAt:
+            Date.now()
+
+    });
+
+
+    saveData();
+
+    renderEverything();
+
+    showToast(
+        "Transfer completed."
+    );
+
+    return true;
+
+}
+
+
+/* =========================================================
+   EXPOSE OPTIONAL API
    ========================================================= */
 
 window.TrackIt = {
 
-    getData() {
-        return data;
-    },
+    data,
 
-    save() {
-        saveData();
-    },
+    saveData,
 
-    reset() {
+    renderEverything,
 
-        const confirmed =
-            confirm(
-                "Reset all TrackIt data?"
-            );
+    createTransfer,
 
+    openAccountManager,
 
-        if (!confirmed) return;
+    openCategoryManager,
 
+    openInvestmentManager,
 
-        data =
-            structuredClone(
-                defaultData
-            );
-
-
-        saveData();
-
-        renderEverything();
-
-        showToast(
-            "TrackIt reset"
-        );
-
-    }
+    openSavingManager
 
 };
-
-
-console.log(
-    "TrackIt initialized."
-);

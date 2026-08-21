@@ -1,2610 +1,3251 @@
-<!DOCTYPE html>
-<html lang="en">
+/* =========================================================
+   TRACKIT — STYLE.CSS
+   Minimal • Apple-inspired • Purple Accent
+   ========================================================= */
 
-<head>
-    <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    >
+/* =========================================================
+   01. DESIGN TOKENS
+   ========================================================= */
 
-    <meta
-        name="theme-color"
-        content="#f7f7f9"
-    >
+:root {
+    --background: #f7f7f9;
+    --surface: #ffffff;
+    --surface-soft: #f2f2f5;
+    --surface-hover: #ebebef;
 
-    <meta
-        name="description"
-        content="TrackIt — simple expense, income and money management."
-    >
+    --text: #18181b;
+    --text-secondary: #71717a;
+    --text-tertiary: #a1a1aa;
 
-    <title>TrackIt</title>
+    --purple: #6d4aff;
+    --purple-dark: #5838d6;
+    --purple-soft: #eeeaff;
 
-    <link
-        rel="icon"
-        type="image/png"
-        href="favicon.png"
-    >
+    --expense: #d84a4a;
+    --expense-dark: #b93636;
+    --expense-soft: #ffe5e5;
 
-    <link
-        rel="apple-touch-icon"
-        href="favicon.png"
-    >
+    --income: #2f8f61;
+    --income-dark: #237149;
+    --income-soft: #e2f5e9;
 
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
+    --transfer: #667085;
+    --transfer-soft: #eaecf0;
 
-    <!-- Pre-existing professional icon library -->
-    <script
-        src="https://unpkg.com/lucide@latest"
-        defer
-    ></script>
-</head>
+    --danger: #d92d20;
+    --danger-soft: #fff0ee;
 
+    --border: rgba(0, 0, 0, 0.065);
 
-<body>
+    --shadow-xs:
+        0 1px 4px rgba(0, 0, 0, 0.035);
 
-<div id="app">
+    --shadow-sm:
+        0 4px 15px rgba(0, 0, 0, 0.055);
 
+    --shadow-md:
+        0 12px 35px rgba(0, 0, 0, 0.10);
 
-    <!-- =========================================================
-         HEADER
-         ========================================================= -->
+    --shadow-lg:
+        0 24px 70px rgba(0, 0, 0, 0.17);
 
-    <header class="app-header">
+    --radius-sm: 12px;
+    --radius-md: 17px;
+    --radius-lg: 22px;
+    --radius-xl: 28px;
 
-        <div class="header-left">
+    --nav-height: 74px;
 
-            <h1 class="app-title">
-                TrackIt
-            </h1>
+    --safe-bottom: env(
+        safe-area-inset-bottom,
+        0px
+    );
 
-            <p
-                class="header-date"
-                id="headerDate"
-            >
-                Today
-            </p>
+    --ease:
+        cubic-bezier(
+            0.22,
+            1,
+            0.36,
+            1
+        );
+}
 
-        </div>
 
+/* =========================================================
+   02. RESET
+   ========================================================= */
 
-        <button
-            class="icon-button"
-            id="headerSettingsButton"
-            type="button"
-            aria-label="Settings"
-        >
-            <i data-lucide="settings"></i>
-        </button>
+* {
+    box-sizing: border-box;
 
-    </header>
+    margin: 0;
+    padding: 0;
 
+    -webkit-tap-highlight-color: transparent;
+}
 
 
-    <!-- =========================================================
-         MAIN
-         ========================================================= -->
+html {
+    width: 100%;
+    min-height: 100%;
 
-    <main class="main-content">
+    background: var(--background);
 
+    scroll-behavior: smooth;
+}
 
-        <!-- =====================================================
-             DASHBOARD
-             ===================================================== -->
 
-        <section
-            id="dashboardPage"
-            class="page active"
-        >
+body {
+    width: 100%;
+    min-height: 100vh;
 
+    margin: 0;
 
-            <!-- =================================================
-                 OVERVIEW
-                 ================================================= -->
+    background: var(--background);
 
-            <section class="summary-section">
+    color: var(--text);
 
-                <div class="section-heading">
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "SF Pro Text",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
 
-                    <h2>
-                        Overview
-                    </h2>
+    font-size: 15px;
 
-                    <p>
-                        Your money at a glance
-                    </p>
+    line-height: 1.4;
 
-                </div>
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 
+    overflow-x: hidden;
+}
 
-                <div class="summary-grid">
 
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
 
-                    <article class="summary-card expense-summary">
 
-                        <span class="summary-label">
-                            Today's expenses
-                        </span>
+button {
+    border: 0;
 
-                        <strong
-                            class="summary-value"
-                            id="todayExpense"
-                        >
-                            ₹0
-                        </strong>
+    background: none;
 
-                    </article>
+    color: inherit;
 
+    cursor: pointer;
+}
 
-                    <article class="summary-card income-summary">
 
-                        <span class="summary-label">
-                            Today's income
-                        </span>
+input,
+select,
+textarea {
+    outline: none;
+}
 
-                        <strong
-                            class="summary-value"
-                            id="todayIncome"
-                        >
-                            ₹0
-                        </strong>
 
-                    </article>
+input::placeholder {
+    color: var(--text-tertiary);
+}
 
 
-                    <article class="summary-card expense-summary">
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline:
+        2px solid
+        rgba(109, 74, 255, 0.35);
 
-                        <span class="summary-label">
-                            This month's expenses
-                        </span>
+    outline-offset: 2px;
+}
 
-                        <strong
-                            class="summary-value"
-                            id="monthExpense"
-                        >
-                            ₹0
-                        </strong>
 
-                    </article>
+::selection {
+    background: rgba(109, 74, 255, 0.16);
 
+    color: var(--text);
+}
 
-                    <article class="summary-card income-summary">
 
-                        <span class="summary-label">
-                            This month's income
-                        </span>
+/* =========================================================
+   03. APP
+   ========================================================= */
 
-                        <strong
-                            class="summary-value"
-                            id="monthIncome"
-                        >
-                            ₹0
-                        </strong>
+#app {
+    width: 100%;
+    min-height: 100vh;
 
-                    </article>
+    position: relative;
+}
 
-                </div>
 
+.main-content {
+    width: 100%;
+    max-width: 1080px;
 
-                <div class="net-summary">
+    margin: 0 auto;
 
-                    <span>
-                        This month's net
-                    </span>
+    padding:
+        0
+        20px
+        calc(
+            var(--nav-height)
+            + var(--safe-bottom)
+            + 32px
+        );
+}
 
-                    <strong id="monthNet">
-                        ₹0
-                    </strong>
 
-                </div>
+/* =========================================================
+   04. HEADER
+   ========================================================= */
 
+.app-header {
+    width: 100%;
+    max-width: 1080px;
 
-                <div class="net-summary today-net-summary">
+    margin: 0 auto;
 
-                    <span>
-                        Today's net
-                    </span>
+    padding:
+        18px
+        20px
+        12px;
 
-                    <strong id="todayNet">
-                        ₹0
-                    </strong>
+    display: flex;
 
-                </div>
+    align-items: center;
+    justify-content: space-between;
 
-            </section>
+    position: sticky;
 
+    top: 0;
 
+    z-index: 80;
 
-            <!-- =================================================
-                 FIRST ACCOUNT REQUIREMENT
-                 ================================================= -->
+    background:
+        rgba(247, 247, 249, 0.88);
 
-            <section
-                class="setup-required-card"
-                id="accountSetupNotice"
-            >
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+}
 
-                <div class="setup-required-icon">
-                    <i data-lucide="wallet-cards"></i>
-                </div>
 
-                <div class="setup-required-content">
+.header-left {
+    min-width: 0;
+}
 
-                    <h2>
-                        Set up your accounts
-                    </h2>
 
-                    <p>
-                        Add at least one cash account and one bank
-                        account before adding transactions.
-                    </p>
+.app-title {
+    margin: 0;
 
-                </div>
+    font-size: 28px;
 
-                <button
-                    type="button"
-                    class="primary-action"
-                    id="setupAccountsButton"
-                >
-                    Set up accounts
-                </button>
+    line-height: 1;
 
-            </section>
+    font-weight: 750;
 
+    letter-spacing: -0.9px;
+}
 
 
-            <!-- =================================================
-                 EXPENSE
-                 ================================================= -->
+.header-date {
+    margin-top: 7px;
 
-            <section class="quick-add-section">
+    color: var(--text-secondary);
 
-                <div class="section-heading">
+    font-size: 12px;
 
-                    <h2>
-                        Add expense
-                    </h2>
+    font-weight: 500;
+}
 
-                    <p>
-                        Choose where the money is coming from
-                    </p>
 
-                </div>
+/* =========================================================
+   05. LUCIDE ICON SYSTEM
+   ========================================================= */
 
+svg {
+    width: 19px;
+    height: 19px;
 
-                <div class="quick-add-card expense-card">
+    stroke-width: 1.9;
 
+    flex-shrink: 0;
+}
 
-                    <!-- CASH -->
 
-                    <div class="quick-amount">
+.icon-button svg {
+    width: 19px;
+    height: 19px;
+}
 
-                        <label for="expenseCashAmount">
-                            Primary Cash
-                        </label>
 
-                        <div class="amount-input-wrap">
+.nav-icon svg {
+    width: 20px;
+    height: 20px;
+}
 
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
 
-                            <input
-                                id="expenseCashAmount"
-                                class="amount-input quick-expense-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
+.feature-card-top > svg {
+    width: 21px;
+    height: 21px;
 
-                        </div>
+    color: var(--purple);
+}
 
-                    </div>
 
+.transfer-arrow svg {
+    width: 19px;
+    height: 19px;
+}
 
-                    <!-- BANK -->
 
-                    <div class="quick-amount">
+/* =========================================================
+   06. ICON BUTTON
+   ========================================================= */
 
-                        <label for="expenseBankAmount">
-                            Primary Bank
-                        </label>
+.icon-button {
+    width: 42px;
+    height: 42px;
 
-                        <div class="amount-input-wrap">
+    flex: 0 0 42px;
 
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
+    display: flex;
 
-                            <input
-                                id="expenseBankAmount"
-                                class="amount-input quick-expense-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
+    align-items: center;
+    justify-content: center;
 
-                        </div>
+    border-radius: 50%;
 
-                    </div>
+    background: var(--surface);
 
-                </div>
+    color: var(--text);
 
-            </section>
+    box-shadow: var(--shadow-xs);
 
+    transition:
+        transform 180ms var(--ease),
+        background 180ms ease;
+}
 
 
-            <!-- =================================================
-                 INCOME
-                 ================================================= -->
+.icon-button:active {
+    transform: scale(0.91);
 
-            <section class="quick-add-section">
+    background: var(--surface-soft);
+}
 
-                <div class="section-heading">
 
-                    <h2>
-                        Add income
-                    </h2>
+/* =========================================================
+   07. PAGES
+   ========================================================= */
 
-                    <p>
-                        Choose where the money is received
-                    </p>
+.page {
+    display: none;
 
-                </div>
+    width: 100%;
 
+    animation:
+        page-enter 220ms var(--ease);
+}
 
-                <div class="quick-add-card income-card">
 
+.page.active {
+    display: block;
+}
 
-                    <!-- CASH -->
 
-                    <div class="quick-amount">
+@keyframes page-enter {
+    from {
+        opacity: 0;
 
-                        <label for="incomeCashAmount">
-                            Primary Cash
-                        </label>
+        transform:
+            translateY(5px);
+    }
 
-                        <div class="amount-input-wrap">
+    to {
+        opacity: 1;
 
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
+        transform:
+            translateY(0);
+    }
+}
 
-                            <input
-                                id="incomeCashAmount"
-                                class="amount-input quick-income-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
 
-                        </div>
+/* =========================================================
+   08. HEADINGS
+   ========================================================= */
 
-                    </div>
+.section-heading {
+    margin-bottom: 14px;
+}
 
 
-                    <!-- BANK -->
+.section-heading h2 {
+    margin: 0;
 
-                    <div class="quick-amount">
+    font-size: 20px;
 
-                        <label for="incomeBankAmount">
-                            Primary Bank
-                        </label>
+    line-height: 1.15;
 
-                        <div class="amount-input-wrap">
+    font-weight: 720;
 
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
+    letter-spacing: -0.45px;
+}
 
-                            <input
-                                id="incomeBankAmount"
-                                class="amount-input quick-income-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
 
-                        </div>
+.section-heading p {
+    margin-top: 4px;
 
-                    </div>
+    color: var(--text-secondary);
 
-                </div>
+    font-size: 12px;
 
-            </section>
+    line-height: 1.35;
+}
 
 
+.section-heading-row {
+    display: flex;
 
-            <!-- =================================================
-                 SHIFT OVERVIEW
-                 ================================================= -->
+    align-items: flex-end;
 
-            <section class="shift-overview-section">
+    justify-content: space-between;
 
-                <div class="section-heading">
+    gap: 20px;
+}
 
-                    <h2>
-                        Shift overview
-                    </h2>
 
-                    <p>
-                        Where your money is currently held
-                    </p>
+.page-heading {
+    padding:
+        18px
+        0
+        24px;
 
-                </div>
+    display: flex;
 
+    align-items: flex-start;
+    justify-content: space-between;
 
-                <div class="shift-overview-grid">
+    gap: 20px;
+}
 
 
-                    <article class="shift-overview-card">
+.page-heading h1 {
+    margin: 0;
 
-                        <span>
-                            Cash balance
-                        </span>
+    font-size: 32px;
 
-                        <strong id="shiftCashBalance">
-                            ₹0
-                        </strong>
+    line-height: 1;
 
-                    </article>
+    font-weight: 760;
 
+    letter-spacing: -1.1px;
+}
 
-                    <article class="shift-overview-card">
 
-                        <span>
-                            Bank balance
-                        </span>
+.page-heading p {
+    margin-top: 7px;
 
-                        <strong id="shiftBankBalance">
-                            ₹0
-                        </strong>
+    color: var(--text-secondary);
 
-                    </article>
+    font-size: 13px;
+}
 
 
-                    <article class="shift-overview-card">
+/* =========================================================
+   09. SUMMARY
+   ========================================================= */
 
-                        <span>
-                            Today's transfers
-                        </span>
+.summary-section {
+    margin-top: 15px;
 
-                        <strong id="shiftTodayTransfers">
-                            ₹0
-                        </strong>
+    margin-bottom: 32px;
+}
 
-                    </article>
 
-                </div>
+.summary-grid {
+    display: grid;
 
-            </section>
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
 
+    gap: 10px;
+}
 
 
-            <!-- =================================================
-                 SELF TRANSFER
-                 ================================================= -->
+.summary-card {
+    min-height: 112px;
 
-            <section class="quick-add-section">
+    padding: 17px;
 
-                <div class="section-heading">
+    display: flex;
 
-                    <h2>
-                        Self transfer
-                    </h2>
+    flex-direction: column;
 
-                    <p>
-                        Transfer money between your own accounts
-                    </p>
+    justify-content: space-between;
 
-                </div>
+    border-radius: var(--radius-md);
 
+    border: 1px solid transparent;
+}
 
-                <div class="quick-add-card transfer-card">
 
+.expense-summary {
+    background: var(--expense-soft);
 
-                    <button
-                        type="button"
-                        class="account-selector"
-                        id="transferFromButton"
-                    >
+    border-color:
+        rgba(216, 74, 74, 0.10);
+}
 
-                        <span class="account-selector-label">
-                            From
-                        </span>
 
-                        <strong
-                            class="account-selector-value"
-                            id="transferFromValue"
-                        >
-                            Primary Cash
-                        </strong>
+.income-summary {
+    background: var(--income-soft);
 
-                        <i data-lucide="chevron-right"></i>
+    border-color:
+        rgba(47, 143, 97, 0.10);
+}
 
-                    </button>
 
+.summary-label {
+    color: var(--text-secondary);
 
-                    <div class="transfer-arrow">
-                        <i data-lucide="arrow-down"></i>
-                    </div>
+    font-size: 12px;
 
+    font-weight: 600;
+}
 
-                    <button
-                        type="button"
-                        class="account-selector"
-                        id="transferToButton"
-                    >
 
-                        <span class="account-selector-label">
-                            To
-                        </span>
+.summary-value {
+    margin-top: 13px;
 
-                        <strong
-                            class="account-selector-value"
-                            id="transferToValue"
-                        >
-                            Primary Bank
-                        </strong>
+    font-size: 25px;
 
-                        <i data-lucide="chevron-right"></i>
+    line-height: 1;
 
-                    </button>
+    font-weight: 720;
 
+    letter-spacing: -0.75px;
+}
 
-                    <div class="quick-amount">
 
-                        <label for="transferAmount">
-                            Amount
-                        </label>
+.expense-summary .summary-value {
+    color: var(--expense-dark);
+}
 
-                        <div class="amount-input-wrap">
 
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
+.income-summary .summary-value {
+    color: var(--income-dark);
+}
 
-                            <input
-                                id="transferAmount"
-                                class="amount-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
 
-                        </div>
+.net-summary {
+    min-height: 53px;
 
-                    </div>
+    margin-top: 8px;
 
+    padding:
+        0
+        17px;
 
-                    <button
-                        type="button"
-                        class="primary-action"
-                        id="transferButton"
-                    >
-                        Transfer money
-                    </button>
+    display: flex;
 
-                </div>
+    align-items: center;
+    justify-content: space-between;
 
-            </section>
+    border-radius: var(--radius-md);
 
+    background: var(--surface);
 
+    border: 1px solid var(--border);
 
-            <!-- =================================================
-                 TODAY TRANSACTIONS
-                 ================================================= -->
+    box-shadow: var(--shadow-xs);
+}
 
-            <section class="transactions-preview-section">
 
-                <div class="section-heading-row">
+.net-summary span {
+    color: var(--text-secondary);
 
-                    <div class="section-heading">
+    font-size: 12px;
 
-                        <h2>
-                            Today
-                        </h2>
+    font-weight: 550;
+}
 
-                        <p>
-                            Today's transactions
-                        </p>
 
-                    </div>
+.net-summary strong {
+    font-size: 15px;
 
+    font-weight: 720;
+}
 
-                    <button
-                        class="text-button"
-                        id="viewAllTransactionsButton"
-                        type="button"
-                    >
-                        See all
-                    </button>
 
-                </div>
+/* =========================================================
+   10. QUICK ADD
+   ========================================================= */
 
+.quick-add-section {
+    margin-bottom: 31px;
+}
 
-                <div
-                    id="todayTransactions"
-                    class="transaction-list"
-                ></div>
 
-            </section>
+.quick-add-card {
+    display: grid;
 
+    gap: 9px;
 
+    padding: 9px;
 
-            <!-- =================================================
-                 INVESTMENTS
-                 ================================================= -->
+    border-radius: var(--radius-lg);
 
-            <section class="dashboard-feature-section">
+    border: 1px solid transparent;
+}
 
-                <div class="section-heading">
 
-                    <h2>
-                        Investments
-                    </h2>
+.expense-card {
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
 
-                    <p>
-                        Your current investments
-                    </p>
+    background:
+        linear-gradient(
+            135deg,
+            #ffe1e1 0%,
+            #fff0f0 100%
+        );
 
-                </div>
+    border-color:
+        rgba(216, 74, 74, 0.12);
+}
 
 
-                <div class="feature-card">
+.income-card {
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
 
-                    <div class="feature-card-top">
+    background:
+        linear-gradient(
+            135deg,
+            #def3e6 0%,
+            #edf9f2 100%
+        );
 
-                        <div>
+    border-color:
+        rgba(47, 143, 97, 0.12);
+}
 
-                            <span class="feature-label">
-                                Total investments
-                            </span>
 
-                            <strong id="dashboardInvestmentTotal">
-                                ₹0
-                            </strong>
+.transfer-card {
+    grid-template-columns: 1fr;
 
-                            <span
-                                class="feature-subvalue"
-                                id="dashboardInvestmentReturn"
-                            >
-                                ₹0 return
-                            </span>
+    background:
+        linear-gradient(
+            135deg,
+            #e9ebf0 0%,
+            #f5f5f7 100%
+        );
 
-                        </div>
+    border-color:
+        rgba(102, 112, 133, 0.10);
+}
 
-                        <i data-lucide="trending-up"></i>
 
-                    </div>
+.quick-amount {
+    min-width: 0;
 
+    padding: 15px;
 
-                    <button
-                        type="button"
-                        class="feature-action"
-                        id="editInvestmentsButton"
-                    >
-                        Edit investments
-                    </button>
+    border-radius: 16px;
 
-                </div>
+    background:
+        rgba(255, 255, 255, 0.68);
 
-            </section>
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.65);
 
+    transition:
+        background 180ms ease,
+        transform 180ms var(--ease);
+}
 
 
-            <!-- =================================================
-                 SAVINGS
-                 ================================================= -->
+.quick-amount:focus-within {
+    background:
+        rgba(255, 255, 255, 0.94);
 
-            <section class="dashboard-feature-section">
+    transform:
+        translateY(-1px);
+}
 
-                <div class="section-heading">
 
-                    <h2>
-                        Savings
-                    </h2>
+.quick-amount label {
+    display: block;
 
-                    <p>
-                        Things you're saving for
-                    </p>
+    margin-bottom: 10px;
 
-                </div>
+    color: var(--text-secondary);
 
+    font-size: 11px;
 
-                <div class="feature-card">
+    font-weight: 650;
 
-                    <div class="feature-card-top">
+    white-space: nowrap;
 
-                        <div>
+    overflow: hidden;
 
-                            <span class="feature-label">
-                                Total saved
-                            </span>
+    text-overflow: ellipsis;
+}
 
-                            <strong id="dashboardSavingsTotal">
-                                ₹0
-                            </strong>
 
-                            <span
-                                class="feature-subvalue"
-                                id="dashboardSavingsGoal"
-                            >
-                                Goal ₹0
-                            </span>
+.amount-input-wrap {
+    display: flex;
 
-                        </div>
+    align-items: center;
 
-                        <i data-lucide="piggy-bank"></i>
+    min-width: 0;
+}
 
-                    </div>
 
+.currency-symbol {
+    flex: 0 0 auto;
 
-                    <div class="savings-progress">
+    margin-right: 3px;
 
-                        <span
-                            id="dashboardSavingsProgress"
-                        ></span>
+    color: var(--text);
 
-                    </div>
+    font-size: 22px;
 
+    line-height: 1;
 
-                    <button
-                        type="button"
-                        class="feature-action"
-                        id="editSavingsButton"
-                    >
-                        Edit savings
-                    </button>
+    font-weight: 600;
+}
 
-                </div>
 
-            </section>
+.amount-input {
+    width: 100%;
+    min-width: 0;
 
-        </section>
+    padding: 0;
 
+    border: 0;
 
+    outline: 0;
 
-        <!-- =====================================================
-             TRANSACTIONS PAGE
-             ===================================================== -->
+    background: transparent;
 
-        <section
-            id="transactionsPage"
-            class="page"
-        >
+    color: var(--text);
 
-            <div class="page-heading">
+    font-size: 27px;
 
-                <div>
+    line-height: 1;
 
-                    <h1>
-                        Transactions
-                    </h1>
+    font-weight: 720;
 
-                    <p>
-                        Every transaction in one place
-                    </p>
+    letter-spacing: -0.8px;
+}
 
-                </div>
 
+.amount-input::-webkit-inner-spin-button,
+.amount-input::-webkit-outer-spin-button {
+    margin: 0;
 
-                <button
-                    class="icon-button"
-                    id="transactionFilterButton"
-                    type="button"
-                    aria-label="Filter transactions"
-                >
-                    <i data-lucide="sliders-horizontal"></i>
-                </button>
+    -webkit-appearance: none;
+}
 
-            </div>
 
+.amount-input[type="number"] {
+    -moz-appearance: textfield;
+}
 
-            <div
-                id="allTransactions"
-                class="transaction-list all-transactions-list"
-            ></div>
 
-        </section>
+/* =========================================================
+   11. ACCOUNT SELECTORS
+   ========================================================= */
 
+.account-selector {
+    width: 100%;
 
+    min-height: 61px;
 
-        <!-- =====================================================
-             STATISTICS PAGE
-             ===================================================== -->
+    padding:
+        10px
+        14px;
 
-        <section
-            id="statisticsPage"
-            class="page"
-        >
+    display: grid;
 
-            <div class="page-heading">
+    grid-template-columns:
+        1fr
+        auto;
 
-                <div>
+    grid-template-areas:
+        "label arrow"
+        "value arrow";
 
-                    <h1>
-                        Statistics
-                    </h1>
+    align-items: center;
 
-                    <p>
-                        Important numbers without unnecessary graphs
-                    </p>
+    text-align: left;
 
-                </div>
+    border-radius: 16px;
 
-            </div>
+    background:
+        rgba(255, 255, 255, 0.72);
 
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.75);
 
-            <div class="statistics-grid">
+    transition:
+        transform 180ms var(--ease),
+        background 180ms ease;
+}
 
 
-                <article class="stat-card">
+.account-selector:active {
+    transform: scale(0.985);
 
-                    <span class="stat-label">
-                        Average daily expense
-                    </span>
+    background:
+        rgba(255, 255, 255, 0.95);
+}
 
-                    <strong id="averageDailyExpense">
-                        ₹0
-                    </strong>
 
-                    <span class="stat-note">
-                        This month so far
-                    </span>
+.account-selector-label {
+    grid-area: label;
 
-                </article>
+    color: var(--text-secondary);
 
+    font-size: 10px;
 
-                <article class="stat-card">
+    font-weight: 600;
+}
 
-                    <span class="stat-label">
-                        Average daily income
-                    </span>
 
-                    <strong id="averageDailyIncomeValue">
-                        ₹0
-                    </strong>
+.account-selector-value {
+    grid-area: value;
 
-                    <span class="stat-note">
-                        This month so far
-                    </span>
+    margin-top: 2px;
 
-                </article>
+    font-size: 13px;
 
+    font-weight: 650;
+}
 
-                <article class="stat-card">
 
-                    <span class="stat-label">
-                        Highest expense
-                    </span>
+.chevron {
+    grid-area: arrow;
 
-                    <strong id="highestExpense">
-                        ₹0
-                    </strong>
+    color: var(--text-tertiary);
 
-                </article>
+    font-size: 24px;
 
+    font-weight: 300;
 
-                <article class="stat-card">
+    line-height: 1;
+}
 
-                    <span class="stat-label">
-                        Highest income
-                    </span>
 
-                    <strong id="highestIncome">
-                        ₹0
-                    </strong>
+.transfer-arrow {
+    width: 100%;
 
-                </article>
+    display: flex;
 
+    align-items: center;
+    justify-content: center;
 
-                <article class="stat-card">
+    color: var(--transfer);
+}
 
-                    <span class="stat-label">
-                        Total transactions
-                    </span>
 
-                    <strong id="totalTransactions">
-                        0
-                    </strong>
+/* =========================================================
+   12. PRIMARY / SECONDARY BUTTONS
+   ========================================================= */
 
-                </article>
+.primary-action,
+.secondary-action {
+    min-height: 48px;
 
+    padding:
+        0
+        18px;
 
-                <article class="stat-card">
+    border-radius: 14px;
 
-                    <span class="stat-label">
-                        Total transfers
-                    </span>
+    font-size: 13px;
 
-                    <strong id="totalTransfers">
-                        ₹0
-                    </strong>
+    font-weight: 650;
 
-                    <span class="stat-note">
-                        Not counted as income or expense
-                    </span>
+    transition:
+        transform 160ms var(--ease),
+        background 160ms ease,
+        opacity 160ms ease;
+}
 
-                </article>
 
+.primary-action {
+    background: var(--purple);
 
-                <article class="stat-card">
+    color: white;
 
-                    <span class="stat-label">
-                        Current cash
-                    </span>
+    box-shadow:
+        0 4px 12px
+        rgba(109, 74, 255, 0.18);
+}
 
-                    <strong id="statisticsCash">
-                        ₹0
-                    </strong>
 
-                </article>
+.primary-action:active {
+    transform: scale(0.975);
 
+    background: var(--purple-dark);
+}
 
-                <article class="stat-card">
 
-                    <span class="stat-label">
-                        Current bank
-                    </span>
+.secondary-action {
+    background: var(--surface-soft);
 
-                    <strong id="statisticsBank">
-                        ₹0
-                    </strong>
+    color: var(--text);
+}
 
-                </article>
 
+.secondary-action:active {
+    transform: scale(0.975);
 
-                <article class="stat-card">
+    background: var(--surface-hover);
+}
 
-                    <span class="stat-label">
-                        Total money
-                    </span>
 
-                    <strong id="statisticsTotalMoney">
-                        ₹0
-                    </strong>
+.danger-action {
+    color: var(--danger);
+}
 
-                </article>
 
+.text-button {
+    min-height: 36px;
 
-            </div>
+    padding:
+        5px
+        2px;
 
+    color: var(--purple);
 
-            <section class="statistics-section">
+    font-size: 12px;
 
-                <div class="section-heading">
+    font-weight: 650;
+}
 
-                    <h2>
-                        This month
-                    </h2>
 
-                    <p>
-                        Simple breakdown
-                    </p>
+.text-button:active {
+    opacity: 0.55;
+}
 
-                </div>
 
+/* =========================================================
+   13. FEATURE CARD
+   ========================================================= */
 
-                <div class="statistics-breakdown">
+.dashboard-feature-section {
+    margin-bottom: 30px;
+}
 
 
-                    <div class="breakdown-row">
+.feature-card {
+    padding: 18px;
 
-                        <span>
-                            Income
-                        </span>
+    background: var(--surface);
 
-                        <strong id="statisticsMonthIncome">
-                            ₹0
-                        </strong>
+    border:
+        1px solid var(--border);
 
-                    </div>
+    border-radius: var(--radius-md);
 
+    box-shadow: var(--shadow-xs);
+}
 
-                    <div class="breakdown-row">
 
-                        <span>
-                            Expenses
-                        </span>
+.feature-card-top {
+    display: flex;
 
-                        <strong id="statisticsMonthExpense">
-                            ₹0
-                        </strong>
+    align-items: flex-start;
 
-                    </div>
+    justify-content: space-between;
 
+    gap: 20px;
+}
 
-                    <div class="breakdown-row total-row">
 
-                        <span>
-                            Net
-                        </span>
+.feature-label {
+    display: block;
 
-                        <strong id="statisticsMonthNet">
-                            ₹0
-                        </strong>
+    color: var(--text-secondary);
 
-                    </div>
+    font-size: 11px;
 
-                </div>
+    font-weight: 600;
+}
 
-            </section>
 
-        </section>
+.feature-card strong {
+    display: block;
 
+    margin-top: 6px;
 
+    font-size: 24px;
 
-        <!-- =====================================================
-             SETTINGS PAGE
-             ===================================================== -->
+    line-height: 1;
 
-        <section
-            id="settingsPage"
-            class="page"
-        >
+    letter-spacing: -0.6px;
+}
 
-            <div class="page-heading">
 
-                <div>
+.feature-subvalue {
+    display: block;
 
-                    <h1>
-                        Settings
-                    </h1>
+    margin-top: 5px;
 
-                    <p>
-                        Make TrackIt work your way
-                    </p>
+    color: var(--text-secondary);
 
-                </div>
+    font-size: 11px;
+}
 
-            </div>
 
+.feature-action {
+    width: 100%;
 
+    min-height: 46px;
 
-            <!-- =================================================
-                 CATEGORIES
-                 ================================================= -->
+    margin-top: 18px;
 
-            <section class="settings-section">
+    border-radius: 13px;
 
-                <div class="section-heading">
+    background: var(--surface-soft);
 
-                    <h2>
-                        Categories
-                    </h2>
+    color: var(--text);
 
-                    <p>
-                        Create your own categories
-                    </p>
+    font-size: 12px;
 
-                </div>
+    font-weight: 650;
 
+    transition:
+        transform 160ms var(--ease),
+        background 160ms ease;
+}
 
-                <div class="settings-card">
 
+.feature-action:active {
+    transform: scale(0.985);
 
-                    <div class="settings-row">
+    background: var(--surface-hover);
+}
 
-                        <div class="settings-row-info">
 
-                            <strong>
-                                Expense categories
-                            </strong>
+.savings-progress {
+    width: 100%;
+    height: 6px;
 
-                            <span>
-                                Used when adding expenses
-                            </span>
+    margin-top: 16px;
 
-                        </div>
+    overflow: hidden;
 
+    border-radius: 999px;
 
-                        <button
-                            type="button"
-                            class="secondary-action"
-                            id="manageExpenseCategoriesButton"
-                        >
-                            Manage
-                        </button>
+    background: var(--surface-soft);
+}
 
-                    </div>
 
+.savings-progress span {
+    display: block;
 
-                    <div
-                        id="expenseCategoriesList"
-                        class="settings-list"
-                    ></div>
+    width: 0;
+    height: 100%;
 
+    border-radius: inherit;
 
-                    <div class="settings-row">
+    background: var(--purple);
 
-                        <div class="settings-row-info">
+    transition:
+        width 350ms var(--ease);
+}
 
-                            <strong>
-                                Income categories
-                            </strong>
 
-                            <span>
-                                Used when adding income
-                            </span>
+/* =========================================================
+   14. TRANSACTIONS
+   ========================================================= */
 
-                        </div>
+.transactions-preview-section {
+    margin-bottom: 34px;
+}
 
 
-                        <button
-                            type="button"
-                            class="secondary-action"
-                            id="manageIncomeCategoriesButton"
-                        >
-                            Manage
-                        </button>
+.transaction-list,
+.all-transactions-list {
+    display: flex;
 
-                    </div>
+    flex-direction: column;
 
+    gap: 8px;
+}
 
-                    <div
-                        id="incomeCategoriesList"
-                        class="settings-list"
-                    ></div>
 
-                </div>
+.transaction-group {
+    margin-bottom: 21px;
+}
 
-            </section>
 
+.transaction-date-heading {
+    margin:
+        8px
+        4px
+        8px;
 
+    color: var(--text-secondary);
 
-            <!-- =================================================
-                 CASH ACCOUNTS
-                 ================================================= -->
+    font-size: 11px;
 
-            <section class="settings-section">
+    font-weight: 650;
 
-                <div class="section-heading">
+    text-transform: uppercase;
 
-                    <h2>
-                        Cash accounts
-                    </h2>
+    letter-spacing: 0.55px;
+}
 
-                    <p>
-                        Physical cash accounts
-                    </p>
 
-                </div>
+.transaction-row-wrapper {
+    position: relative;
 
+    overflow: hidden;
 
-                <div class="settings-card">
+    border-radius: 16px;
+}
 
-                    <div
-                        id="cashAccountsList"
-                        class="account-list"
-                    ></div>
 
+.transaction-delete-background {
+    position: absolute;
 
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addCashAccountButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add cash account
-                    </button>
+    inset: 0;
 
-                </div>
+    display: flex;
 
-            </section>
+    align-items: center;
+    justify-content: flex-end;
 
+    padding-right: 22px;
 
+    background: var(--danger);
 
-            <!-- =================================================
-                 BANK ACCOUNTS
-                 ================================================= -->
+    color: white;
 
-            <section class="settings-section">
+    font-size: 12px;
 
-                <div class="section-heading">
+    font-weight: 700;
+}
 
-                    <h2>
-                        Bank accounts
-                    </h2>
 
-                    <p>
-                        Your bank accounts
-                    </p>
+.transaction-row {
+    position: relative;
 
-                </div>
+    z-index: 2;
 
+    width: 100%;
 
-                <div class="settings-card">
+    min-height: 68px;
 
-                    <div
-                        id="bankAccountsList"
-                        class="account-list"
-                    ></div>
+    padding:
+        12px
+        14px;
 
+    display: grid;
 
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addBankAccountButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add bank account
-                    </button>
+    grid-template-columns:
+        42px
+        minmax(0, 1fr)
+        auto;
 
-                </div>
+    align-items: center;
 
-            </section>
+    gap: 11px;
 
+    text-align: left;
 
+    background: var(--surface);
 
-            <!-- =================================================
-                 INVESTMENTS
-                 ================================================= -->
+    border:
+        1px solid var(--border);
 
-            <section class="settings-section">
+    border-radius: 16px;
 
-                <div class="section-heading">
+    transition:
+        transform 230ms var(--ease);
+}
 
-                    <h2>
-                        Investments
-                    </h2>
 
-                    <p>
-                        Track investments and returns
-                    </p>
+.transaction-icon {
+    width: 42px;
+    height: 42px;
 
-                </div>
+    display: flex;
 
+    align-items: center;
+    justify-content: center;
 
-                <div class="settings-card">
+    border-radius: 13px;
+}
 
-                    <div
-                        id="investmentSettingsList"
-                        class="account-list"
-                    ></div>
 
+.transaction-icon.expense {
+    background: var(--expense-soft);
 
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addInvestmentButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add investment
-                    </button>
+    color: var(--expense-dark);
+}
 
-                </div>
 
-            </section>
+.transaction-icon.income {
+    background: var(--income-soft);
 
+    color: var(--income-dark);
+}
 
 
-            <!-- =================================================
-                 SAVINGS
-                 ================================================= -->
+.transaction-icon.transfer {
+    background: var(--transfer-soft);
 
-            <section class="settings-section">
+    color: var(--transfer);
+}
 
-                <div class="section-heading">
 
-                    <h2>
-                        Savings goals
-                    </h2>
+.transaction-icon svg {
+    width: 18px;
+    height: 18px;
+}
 
-                    <p>
-                        Things you want to save for
-                    </p>
 
-                </div>
+.transaction-info {
+    min-width: 0;
+}
 
 
-                <div class="settings-card">
+.transaction-title {
+    display: block;
 
-                    <div
-                        id="savingsSettingsList"
-                        class="account-list"
-                    ></div>
+    overflow: hidden;
 
+    text-overflow: ellipsis;
 
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addSavingsButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add savings goal
-                    </button>
+    white-space: nowrap;
 
-                </div>
+    font-size: 13px;
 
-            </section>
+    font-weight: 650;
+}
 
 
+.transaction-subtitle {
+    display: block;
 
-            <!-- =================================================
-                 STATISTICS SETTINGS
-                 ================================================= -->
+    margin-top: 3px;
 
-            <section class="settings-section">
+    color: var(--text-secondary);
 
-                <div class="section-heading">
+    overflow: hidden;
 
-                    <h2>
-                        Statistics
-                    </h2>
+    text-overflow: ellipsis;
 
-                    <p>
-                        Choose what TrackIt includes
-                    </p>
+    white-space: nowrap;
 
-                </div>
+    font-size: 10px;
+}
 
 
-                <div class="settings-card">
+.transaction-amount {
+    font-size: 13px;
 
+    font-weight: 700;
 
-                    <div class="settings-toggle-row">
+    white-space: nowrap;
+}
 
-                        <div class="settings-row-info">
 
-                            <strong>
-                                Cash accounts
-                            </strong>
+.transaction-amount.expense {
+    color: var(--expense-dark);
+}
 
-                            <span>
-                                Include cash in statistics
-                            </span>
 
-                        </div>
+.transaction-amount.income {
+    color: var(--income-dark);
+}
 
 
-                        <label class="switch">
+.transaction-amount.transfer {
+    color: var(--transfer);
+}
 
-                            <input
-                                type="checkbox"
-                                id="statisticsCashToggle"
-                                checked
-                            >
 
-                            <span class="switch-track"></span>
+/* =========================================================
+   15. EMPTY STATE
+   ========================================================= */
 
-                        </label>
+.empty-state {
+    padding:
+        38px
+        20px;
 
-                    </div>
+    text-align: center;
 
+    color: var(--text-secondary);
+}
 
-                    <div class="settings-toggle-row">
 
-                        <div class="settings-row-info">
+.empty-state-icon {
+    width: 44px;
+    height: 44px;
 
-                            <strong>
-                                Bank accounts
-                            </strong>
+    margin:
+        0
+        auto
+        12px;
 
-                            <span>
-                                Include bank accounts
-                            </span>
+    display: flex;
 
-                        </div>
+    align-items: center;
+    justify-content: center;
 
+    border-radius: 50%;
 
-                        <label class="switch">
+    background: var(--surface);
 
-                            <input
-                                type="checkbox"
-                                id="statisticsBankToggle"
-                                checked
-                            >
+    color: var(--text-tertiary);
 
-                            <span class="switch-track"></span>
+    box-shadow: var(--shadow-xs);
+}
 
-                        </label>
 
-                    </div>
+.empty-state-icon svg {
+    width: 19px;
+    height: 19px;
+}
 
 
-                    <div class="settings-toggle-row">
+.empty-state p {
+    font-size: 12px;
+}
 
-                        <div class="settings-row-info">
 
-                            <strong>
-                                Investments
-                            </strong>
+/* =========================================================
+   16. TRANSACTION FILTER
+   ========================================================= */
 
-                            <span>
-                                Include investments
-                            </span>
+.transaction-filter {
+    display: flex;
 
-                        </div>
+    gap: 7px;
 
+    margin-bottom: 18px;
 
-                        <label class="switch">
+    padding-bottom: 2px;
 
-                            <input
-                                type="checkbox"
-                                id="statisticsInvestmentToggle"
-                                checked
-                            >
+    overflow-x: auto;
 
-                            <span class="switch-track"></span>
+    scrollbar-width: none;
+}
 
-                        </label>
 
-                    </div>
+.transaction-filter::-webkit-scrollbar {
+    display: none;
+}
 
 
-                    <div class="settings-toggle-row">
+.filter-chip {
+    flex: 0 0 auto;
 
-                        <div class="settings-row-info">
+    min-height: 36px;
 
-                            <strong>
-                                Savings
-                            </strong>
+    padding:
+        0
+        14px;
 
-                            <span>
-                                Include savings
-                            </span>
+    border-radius: 999px;
 
-                        </div>
+    background: var(--surface);
 
+    border:
+        1px solid var(--border);
 
-                        <label class="switch">
+    color: var(--text-secondary);
 
-                            <input
-                                type="checkbox"
-                                id="statisticsSavingsToggle"
-                                checked
-                            >
+    font-size: 11px;
 
-                            <span class="switch-track"></span>
+    font-weight: 600;
 
-                        </label>
+    transition:
+        background 160ms ease,
+        color 160ms ease;
+}
 
-                    </div>
 
-                </div>
+.filter-chip.active {
+    background: var(--purple);
 
-            </section>
+    border-color: var(--purple);
 
+    color: white;
+}
 
 
-            <!-- =================================================
-                 DATA
-                 ================================================= -->
+/* =========================================================
+   17. STATISTICS
+   ========================================================= */
 
-            <section class="settings-section">
+.statistics-highlight {
+    padding: 24px;
 
-                <div class="section-heading">
+    margin-bottom: 10px;
 
-                    <h2>
-                        Data
-                    </h2>
+    border-radius: var(--radius-lg);
 
-                    <p>
-                        Keep a copy of your TrackIt data
-                    </p>
+    background: var(--text);
 
-                </div>
+    color: white;
+}
 
 
-                <div class="settings-card">
+.statistics-highlight span {
+    display: block;
 
+    opacity: 0.62;
 
-                    <button
-                        type="button"
-                        class="settings-action-row"
-                        id="exportPdfButton"
-                    >
+    font-size: 11px;
 
-                        <span>
+    font-weight: 500;
+}
 
-                            <i data-lucide="file-text"></i>
 
-                            <span>
-                                Export statement PDF
-                            </span>
+.statistics-highlight strong {
+    display: block;
 
-                        </span>
+    margin-top: 7px;
 
-                        <i data-lucide="chevron-right"></i>
+    font-size: 32px;
 
-                    </button>
+    line-height: 1;
 
+    letter-spacing: -1px;
+}
 
-                    <button
-                        type="button"
-                        class="settings-action-row"
-                        id="exportJsonButton"
-                    >
 
-                        <span>
+.statistics-grid {
+    display: grid;
 
-                            <i data-lucide="download"></i>
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
 
-                            <span>
-                                Export JSON
-                            </span>
+    gap: 9px;
 
-                        </span>
+    margin-bottom: 30px;
+}
 
-                        <i data-lucide="chevron-right"></i>
 
-                    </button>
+.stat-card {
+    min-height: 104px;
 
+    padding: 16px;
 
-                    <button
-                        type="button"
-                        class="settings-action-row"
-                        id="importJsonButton"
-                    >
+    display: flex;
 
-                        <span>
+    flex-direction: column;
 
-                            <i data-lucide="upload"></i>
+    justify-content: space-between;
 
-                            <span>
-                                Import JSON
-                            </span>
+    background: var(--surface);
 
-                        </span>
+    border:
+        1px solid var(--border);
 
-                        <i data-lucide="chevron-right"></i>
+    border-radius: var(--radius-md);
 
-                    </button>
+    box-shadow: var(--shadow-xs);
+}
 
 
-                    <input
-                        type="file"
-                        id="jsonImportInput"
-                        accept=".json,application/json"
-                        hidden
-                    >
+.stat-card span {
+    color: var(--text-secondary);
 
-                </div>
+    font-size: 11px;
 
-            </section>
+    font-weight: 550;
+}
 
-        </section>
 
-    </main>
+.stat-card strong {
+    font-size: 20px;
 
+    line-height: 1;
 
+    letter-spacing: -0.4px;
+}
 
-    <!-- =========================================================
-         BOTTOM NAVIGATION
-         ========================================================= -->
 
-    <nav
-        class="bottom-navigation"
-        aria-label="Main navigation"
-    >
+.statistics-section {
+    margin-bottom: 30px;
+}
 
-        <button
-            type="button"
-            class="nav-item active"
-            data-page="dashboardPage"
-            id="dashboardNavButton"
-        >
 
-            <i data-lucide="layout-dashboard"></i>
+.statistics-list {
+    display: flex;
 
-            <span>
-                Dashboard
-            </span>
+    flex-direction: column;
 
-        </button>
+    gap: 8px;
+}
 
 
-        <button
-            type="button"
-            class="nav-item"
-            data-page="transactionsPage"
-            id="transactionsNavButton"
-        >
+.statistics-row {
+    min-height: 58px;
 
-            <i data-lucide="receipt"></i>
+    padding:
+        11px
+        14px;
 
-            <span>
-                Transactions
-            </span>
+    display: flex;
 
-        </button>
+    align-items: center;
 
+    justify-content: space-between;
 
-        <button
-            type="button"
-            class="nav-item"
-            data-page="statisticsPage"
-            id="statisticsNavButton"
-        >
+    gap: 20px;
 
-            <i data-lucide="chart-no-axes-combined"></i>
+    background: var(--surface);
 
-            <span>
-                Statistics
-            </span>
+    border:
+        1px solid var(--border);
 
-        </button>
+    border-radius: 15px;
+}
 
 
-        <button
-            type="button"
-            class="nav-item"
-            data-page="settingsPage"
-            id="settingsNavButton"
-        >
+.statistics-row-left {
+    min-width: 0;
+}
 
-            <i data-lucide="settings"></i>
 
-            <span>
-                Settings
-            </span>
+.statistics-row-name {
+    font-size: 12px;
 
-        </button>
+    font-weight: 600;
+}
 
-    </nav>
 
+.statistics-row-subtitle {
+    margin-top: 2px;
 
+    color: var(--text-secondary);
 
-    <!-- =========================================================
-         UNIVERSAL MODAL
-         ========================================================= -->
+    font-size: 10px;
+}
 
-    <div
-        class="modal-overlay"
-        id="modalOverlay"
-        hidden
-    >
 
-        <div
-            class="modal"
-            id="universalModal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modalTitle"
-        >
+.statistics-row-value {
+    font-size: 12px;
 
-            <div class="modal-header">
+    font-weight: 700;
+}
 
-                <div>
 
-                    <h2 id="modalTitle">
-                        Select
-                    </h2>
+.insight-list {
+    display: flex;
 
-                    <p id="modalSubtitle"></p>
+    flex-direction: column;
 
-                </div>
+    overflow: hidden;
 
+    background: var(--surface);
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="modalCloseButton"
-                    aria-label="Close"
-                >
+    border:
+        1px solid var(--border);
 
-                    <i data-lucide="x"></i>
+    border-radius: var(--radius-md);
+}
 
-                </button>
 
-            </div>
+.insight-row {
+    min-height: 57px;
 
+    padding:
+        10px
+        15px;
 
-            <div
-                class="modal-body"
-                id="modalBody"
-            ></div>
+    display: flex;
 
+    align-items: center;
 
-            <div
-                class="modal-actions"
-                id="modalActions"
-            ></div>
+    justify-content: space-between;
 
-        </div>
+    gap: 20px;
 
-    </div>
+    border-bottom:
+        1px solid var(--border);
+}
 
 
+.insight-row:last-child {
+    border-bottom: 0;
+}
 
-    <!-- =========================================================
-         CATEGORY PICKER
-         ========================================================= -->
 
-    <div
-        class="modal-overlay"
-        id="categoryModal"
-        hidden
-    >
+.insight-row span {
+    color: var(--text-secondary);
 
-        <div
-            class="modal category-modal"
-            role="dialog"
-            aria-modal="true"
-        >
+    font-size: 11px;
+}
 
-            <div class="modal-header">
 
-                <div>
+.insight-row strong {
+    max-width: 55%;
 
-                    <h2 id="categoryModalTitle">
-                        Choose category
-                    </h2>
+    overflow: hidden;
 
-                    <p>
-                        Select a category for this transaction
-                    </p>
+    text-overflow: ellipsis;
 
-                </div>
+    white-space: nowrap;
 
+    font-size: 11px;
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="categoryModalClose"
-                    aria-label="Close"
-                >
+    text-align: right;
+}
 
-                    <i data-lucide="x"></i>
 
-                </button>
+/* =========================================================
+   18. SETTINGS
+   ========================================================= */
 
-            </div>
+.settings-section {
+    margin-bottom: 28px;
+}
 
 
-            <div
-                id="categoryOptions"
-                class="category-options"
-            ></div>
+.settings-section > h3 {
+    margin:
+        0
+        5px
+        9px
+        4px;
 
-        </div>
+    color: var(--text-secondary);
 
-    </div>
+    font-size: 11px;
 
+    font-weight: 650;
 
+    text-transform: uppercase;
 
-    <!-- =========================================================
-         ACCOUNT PICKER
-         ========================================================= -->
+    letter-spacing: 0.55px;
+}
 
-    <div
-        class="modal-overlay"
-        id="accountPickerModal"
-        hidden
-    >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+.settings-list {
+    display: flex;
 
-            <div class="modal-header">
+    flex-direction: column;
 
-                <div>
+    gap: 7px;
+}
 
-                    <h2 id="accountPickerTitle">
-                        Choose account
-                    </h2>
 
-                    <p>
-                        Select an account
-                    </p>
+.settings-row {
+    width: 100%;
 
-                </div>
+    min-height: 58px;
 
+    padding:
+        0
+        15px;
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="accountPickerClose"
-                    aria-label="Close"
-                >
+    display: flex;
 
-                    <i data-lucide="x"></i>
+    align-items: center;
 
-                </button>
+    justify-content: space-between;
 
-            </div>
+    gap: 20px;
 
+    background: var(--surface);
 
-            <div
-                id="accountPickerOptions"
-                class="selection-list"
-            ></div>
+    border-bottom:
+        1px solid var(--border);
 
-        </div>
+    text-align: left;
 
-    </div>
+    font-size: 13px;
 
+    font-weight: 550;
+}
 
 
-    <!-- =========================================================
-         TRANSACTION EDIT MODAL
-         ========================================================= -->
+.settings-row:first-of-type {
+    border-radius:
+        15px
+        15px
+        0
+        0;
+}
 
-    <div
-        class="modal-overlay"
-        id="transactionEditModal"
-        hidden
-    >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+.settings-row:last-of-type {
+    border-radius:
+        0
+        0
+        15px
+        15px;
 
-            <div class="modal-header">
+    border-bottom: 0;
+}
 
-                <div>
 
-                    <h2>
-                        Edit transaction
-                    </h2>
+.settings-row:only-of-type {
+    border-radius: 15px;
+}
 
-                    <p>
-                        Update transaction details
-                    </p>
 
-                </div>
+.settings-row > span:last-child {
+    color: var(--text-tertiary);
 
+    font-size: 21px;
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="transactionEditClose"
-                    aria-label="Close"
-                >
+    font-weight: 300;
+}
 
-                    <i data-lucide="x"></i>
 
-                </button>
+.add-list-button {
+    width: 100%;
 
-            </div>
+    min-height: 48px;
 
+    margin-top: 8px;
 
-            <form
-                id="transactionEditForm"
-                class="modal-form"
-            >
+    display: flex;
 
-                <input
-                    type="hidden"
-                    id="editTransactionId"
-                >
+    align-items: center;
+    justify-content: center;
 
+    gap: 7px;
 
-                <div class="form-field">
+    border-radius: 14px;
 
-                    <label for="editTransactionAmount">
-                        Amount
-                    </label>
+    background: var(--surface);
 
-                    <div class="amount-input-wrap">
+    border:
+        1px dashed
+        rgba(0, 0, 0, 0.14);
 
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
+    color: var(--text-secondary);
 
-                        <input
-                            id="editTransactionAmount"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
+    font-size: 12px;
 
-                    </div>
+    font-weight: 600;
 
-                </div>
+    transition:
+        background 160ms ease,
+        color 160ms ease;
+}
 
 
-                <div class="form-field">
+.add-list-button svg {
+    width: 16px;
+    height: 16px;
+}
 
-                    <label for="editTransactionDate">
-                        Date
-                    </label>
 
-                    <input
-                        id="editTransactionDate"
-                        type="date"
-                        required
-                    >
+.add-list-button:active {
+    background: var(--purple-soft);
 
-                </div>
+    color: var(--purple);
+}
 
 
-                <div class="form-field">
+/* =========================================================
+   19. ACCOUNT / MANAGED ROWS
+   ========================================================= */
 
-                    <label for="editTransactionCategory">
-                        Category
-                    </label>
+.settings-account-row,
+.managed-row {
+    min-height: 62px;
 
-                    <button
-                        type="button"
-                        class="form-select-button"
-                        id="editTransactionCategory"
-                    >
-                        Select category
-                    </button>
+    padding:
+        10px
+        13px;
 
-                </div>
+    display: flex;
 
+    align-items: center;
 
-                <div class="modal-actions">
+    gap: 10px;
 
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveTransactionEditButton"
-                    >
-                        Save
-                    </button>
+    background: var(--surface);
 
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelTransactionEditButton"
-                    >
-                        Cancel
-                    </button>
+    border:
+        1px solid var(--border);
 
-                </div>
+    border-radius: 15px;
+}
 
-            </form>
 
-        </div>
+.settings-account-info,
+.managed-row-main {
+    flex: 1;
 
-    </div>
+    min-width: 0;
+}
 
 
+.settings-account-name,
+.managed-row-title {
+    font-size: 12px;
 
-    <!-- =========================================================
-         ACCOUNT FORM MODAL
-         ========================================================= -->
+    font-weight: 650;
+}
 
-    <div
-        class="modal-overlay"
-        id="accountFormModal"
-        hidden
-    >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+.settings-account-meta,
+.managed-row-subtitle {
+    margin-top: 3px;
 
-            <div class="modal-header">
+    color: var(--text-secondary);
 
-                <div>
+    font-size: 10px;
+}
 
-                    <h2 id="accountFormTitle">
-                        Add account
-                    </h2>
 
-                    <p id="accountFormSubtitle">
-                        Create an account
-                    </p>
+.primary-badge {
+    display: inline-flex;
 
-                </div>
+    align-items: center;
 
+    min-height: 23px;
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="accountFormClose"
-                    aria-label="Close"
-                >
+    padding:
+        0
+        9px;
 
-                    <i data-lucide="x"></i>
+    border-radius: 999px;
 
-                </button>
+    background: var(--purple-soft);
 
-            </div>
+    color: var(--purple);
 
+    font-size: 9px;
 
-            <form
-                id="accountForm"
-                class="modal-form"
-            >
+    font-weight: 650;
+}
 
-                <input
-                    type="hidden"
-                    id="accountFormType"
-                >
 
-                <input
-                    type="hidden"
-                    id="accountFormId"
-                >
+.row-icon-button {
+    width: 38px;
+    height: 38px;
 
+    flex: 0 0 38px;
 
-                <div class="form-field">
+    display: flex;
 
-                    <label for="accountName">
-                        Account name
-                    </label>
+    align-items: center;
+    justify-content: center;
 
-                    <input
-                        id="accountName"
-                        type="text"
-                        placeholder="e.g. HDFC Bank"
-                        autocomplete="off"
-                        required
-                    >
+    border-radius: 11px;
 
-                </div>
+    background: var(--surface-soft);
 
+    color: var(--text-secondary);
+}
 
-                <div class="form-field">
 
-                    <label for="accountOpeningBalance">
-                        Current balance
-                    </label>
+.row-icon-button svg {
+    width: 16px;
+    height: 16px;
+}
 
-                    <div class="amount-input-wrap">
 
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
+.row-icon-button.danger {
+    color: var(--danger);
+}
 
-                        <input
-                            id="accountOpeningBalance"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            placeholder="0"
-                        >
 
-                    </div>
+/* =========================================================
+   20. TOGGLES
+   ========================================================= */
 
-                </div>
+.settings-toggle-row {
+    min-height: 67px;
 
+    padding:
+        12px
+        14px;
 
-                <div class="settings-toggle-row">
+    margin-bottom: 7px;
 
-                    <div class="settings-row-info">
+    display: flex;
 
-                        <strong>
-                            Make primary
-                        </strong>
+    align-items: center;
 
-                        <span>
-                            Use this account in quick entry
-                        </span>
+    justify-content: space-between;
 
-                    </div>
+    gap: 18px;
 
+    background: var(--surface);
 
-                    <label class="switch">
+    border:
+        1px solid var(--border);
 
-                        <input
-                            type="checkbox"
-                            id="accountPrimaryToggle"
-                        >
+    border-radius: 15px;
+}
 
-                        <span class="switch-track"></span>
 
-                    </label>
+.settings-toggle-row > div {
+    min-width: 0;
+}
 
-                </div>
 
+.settings-toggle-row strong {
+    display: block;
 
-                <div class="modal-actions">
+    font-size: 12px;
 
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveAccountButton"
-                    >
-                        Add account
-                    </button>
+    font-weight: 600;
+}
 
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelAccountButton"
-                    >
-                        Cancel
-                    </button>
 
-                </div>
+.settings-toggle-row span {
+    display: block;
 
-            </form>
+    margin-top: 3px;
 
-        </div>
+    color: var(--text-secondary);
 
-    </div>
+    font-size: 10px;
+}
 
 
+.toggle {
+    position: relative;
 
-    <!-- =========================================================
-         CATEGORY FORM MODAL
-         ========================================================= -->
+    flex: 0 0 auto;
 
-    <div
-        class="modal-overlay"
-        id="categoryFormModal"
-        hidden
-    >
+    width: 48px;
+    height: 29px;
+}
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
 
-            <div class="modal-header">
+.toggle input {
+    position: absolute;
 
-                <div>
+    opacity: 0;
 
-                    <h2 id="categoryFormTitle">
-                        Add category
-                    </h2>
+    pointer-events: none;
+}
 
-                    <p>
-                        Create your own category
-                    </p>
 
-                </div>
+.toggle-slider {
+    position: absolute;
 
+    inset: 0;
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="categoryFormClose"
-                    aria-label="Close"
-                >
+    border-radius: 999px;
 
-                    <i data-lucide="x"></i>
+    background: #d4d4d8;
 
-                </button>
+    transition:
+        background 180ms ease;
+}
 
-            </div>
 
+.toggle-slider::after {
+    content: "";
 
-            <form
-                id="categoryForm"
-                class="modal-form"
-            >
+    position: absolute;
 
-                <input
-                    type="hidden"
-                    id="categoryFormType"
-                >
+    width: 23px;
+    height: 23px;
 
-                <input
-                    type="hidden"
-                    id="categoryFormId"
-                >
+    left: 3px;
+    top: 3px;
 
+    border-radius: 50%;
 
-                <div class="form-field">
+    background: white;
 
-                    <label for="categoryName">
-                        Category name
-                    </label>
+    box-shadow:
+        0 1px 4px
+        rgba(0, 0, 0, 0.18);
 
-                    <input
-                        id="categoryName"
-                        type="text"
-                        placeholder="e.g. Groceries"
-                        autocomplete="off"
-                        required
-                    >
+    transition:
+        transform 200ms var(--ease);
+}
 
-                </div>
 
+.toggle input:checked + .toggle-slider {
+    background: var(--purple);
+}
 
-                <div class="modal-actions">
 
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveCategoryButton"
-                    >
-                        Add category
-                    </button>
+.toggle input:checked + .toggle-slider::after {
+    transform:
+        translateX(19px);
+}
 
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelCategoryButton"
-                    >
-                        Cancel
-                    </button>
 
-                </div>
+/* =========================================================
+   21. BOTTOM NAVIGATION
+   ========================================================= */
 
-            </form>
+.bottom-navigation {
+    position: fixed;
 
-        </div>
+    z-index: 100;
 
-    </div>
+    left: 50%;
 
+    bottom: 0;
 
+    transform:
+        translateX(-50%);
 
-    <!-- =========================================================
-         INVESTMENT FORM
-         ========================================================= -->
+    width: 100%;
+    max-width: 560px;
 
-    <div
-        class="modal-overlay"
-        id="investmentFormModal"
-        hidden
-    >
+    min-height: var(--nav-height);
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+    padding:
+        7px
+        13px
+        calc(
+            7px
+            + var(--safe-bottom)
+        );
 
-            <div class="modal-header">
+    display: grid;
 
-                <div>
+    grid-template-columns:
+        repeat(
+            3,
+            1fr
+        );
 
-                    <h2>
-                        Investment
-                    </h2>
+    gap: 6px;
 
-                    <p>
-                        Add or modify an investment
-                    </p>
+    background:
+        rgba(255, 255, 255, 0.91);
 
-                </div>
+    border-top:
+        1px solid
+        rgba(0, 0, 0, 0.065);
 
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+}
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="investmentFormClose"
-                    aria-label="Close"
-                >
 
-                    <i data-lucide="x"></i>
+.nav-item {
+    min-height: 52px;
 
-                </button>
+    display: flex;
 
-            </div>
+    flex-direction: column;
 
+    align-items: center;
+    justify-content: center;
 
-            <form
-                id="investmentForm"
-                class="modal-form"
-            >
+    gap: 4px;
 
-                <input
-                    type="hidden"
-                    id="investmentId"
-                >
+    border-radius: 15px;
 
+    color: var(--text-tertiary);
 
-                <div class="form-field">
+    transition:
+        color 180ms ease,
+        background 180ms ease,
+        transform 160ms var(--ease);
+}
 
-                    <label for="investmentName">
-                        Investment name
-                    </label>
 
-                    <input
-                        id="investmentName"
-                        type="text"
-                        placeholder="e.g. Mutual Fund"
-                        required
-                    >
+.nav-item.active {
+    color: var(--purple);
 
-                </div>
+    background: var(--purple-soft);
+}
 
 
-                <div class="form-field">
+.nav-item:active {
+    transform: scale(0.94);
+}
 
-                    <label for="investmentAmount">
-                        Amount
-                    </label>
 
-                    <div class="amount-input-wrap">
+.nav-icon {
+    display: flex;
 
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
+    align-items: center;
+    justify-content: center;
 
-                        <input
-                            id="investmentAmount"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
+    width: 20px;
+    height: 20px;
+}
 
-                    </div>
 
-                </div>
+.nav-label {
+    font-size: 10px;
 
+    font-weight: 600;
+}
 
-                <div class="form-field">
 
-                    <label for="investmentReturn">
-                        Return percentage
-                    </label>
+/* =========================================================
+   22. OVERLAY
+   ========================================================= */
 
-                    <div class="input-with-unit">
+.overlay {
+    position: fixed;
 
-                        <input
-                            id="investmentReturn"
-                            type="number"
-                            step="0.01"
-                            inputmode="decimal"
-                            placeholder="0"
-                        >
+    inset: 0;
 
-                        <span>
-                            %
-                        </span>
+    z-index: 190;
 
-                    </div>
+    background:
+        rgba(20, 20, 25, 0.28);
 
-                </div>
+    opacity: 0;
 
+    pointer-events: none;
 
-                <div class="modal-actions">
+    transition:
+        opacity 220ms ease;
 
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveInvestmentButton"
-                    >
-                        Save
-                    </button>
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
 
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelInvestmentButton"
-                    >
-                        Cancel
-                    </button>
 
-                </div>
+.overlay.active {
+    opacity: 1;
 
-            </form>
+    pointer-events: auto;
+}
 
-        </div>
 
-    </div>
+/* =========================================================
+   23. BOTTOM SHEETS
+   ========================================================= */
 
+.bottom-sheet {
+    position: fixed;
 
+    z-index: 200;
 
-    <!-- =========================================================
-         SAVINGS FORM
-         ========================================================= -->
+    left: 50%;
+    bottom: 0;
 
-    <div
-        class="modal-overlay"
-        id="savingsFormModal"
-        hidden
-    >
+    width: 100%;
+    max-width: 620px;
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+    max-height: 88vh;
 
-            <div class="modal-header">
+    overflow-y: auto;
 
-                <div>
+    padding:
+        9px
+        20px
+        calc(
+            20px
+            + var(--safe-bottom)
+        );
 
-                    <h2>
-                        Savings goal
-                    </h2>
+    background:
+        rgba(255, 255, 255, 0.985);
 
-                    <p>
-                        Add or modify something you're saving for
-                    </p>
+    border-radius:
+        28px
+        28px
+        0
+        0;
 
-                </div>
+    box-shadow: var(--shadow-lg);
 
+    transform:
+        translate(
+            -50%,
+            105%
+        );
 
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="savingsFormClose"
-                    aria-label="Close"
-                >
+    transition:
+        transform
+        330ms
+        var(--ease);
 
-                    <i data-lucide="x"></i>
+    overscroll-behavior: contain;
 
-                </button>
+    scrollbar-width: none;
+}
 
-            </div>
 
+.bottom-sheet::-webkit-scrollbar {
+    display: none;
+}
 
-            <form
-                id="savingsForm"
-                class="modal-form"
-            >
 
-                <input
-                    type="hidden"
-                    id="savingsId"
-                >
+.bottom-sheet.active {
+    transform:
+        translate(
+            -50%,
+            0
+        );
+}
 
 
-                <div class="form-field">
+.large-sheet {
+    max-height: 92vh;
+}
 
-                    <label for="savingsName">
-                        Saving for
-                    </label>
 
-                    <input
-                        id="savingsName"
-                        type="text"
-                        placeholder="e.g. MacBook"
-                        required
-                    >
+.sheet-handle {
+    width: 36px;
+    height: 4px;
 
-                </div>
+    margin:
+        1px
+        auto
+        18px;
 
+    border-radius: 999px;
 
-                <div class="form-field">
+    background: #d3d3d6;
+}
 
-                    <label for="savingsCurrent">
-                        Current saved amount
-                    </label>
 
-                    <div class="amount-input-wrap">
+.sheet-header {
+    display: flex;
 
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
+    align-items: flex-start;
 
-                        <input
-                            id="savingsCurrent"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
+    justify-content: space-between;
 
-                    </div>
+    gap: 20px;
 
-                </div>
+    margin-bottom: 20px;
+}
 
 
-                <div class="form-field">
+.sheet-header h2 {
+    font-size: 21px;
 
-                    <label for="savingsGoal">
-                        Goal amount
-                    </label>
+    line-height: 1.1;
 
-                    <div class="amount-input-wrap">
+    font-weight: 720;
 
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
+    letter-spacing: -0.45px;
+}
 
-                        <input
-                            id="savingsGoal"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
 
-                    </div>
+.sheet-header p {
+    margin-top: 5px;
 
-                </div>
+    color: var(--text-secondary);
 
+    font-size: 11px;
+}
 
-                <div class="modal-actions">
 
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveSavingsButton"
-                    >
-                        Save
-                    </button>
+.sheet-close {
+    width: 34px;
+    height: 34px;
 
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelSavingsButton"
-                    >
-                        Cancel
-                    </button>
+    flex: 0 0 34px;
 
-                </div>
+    display: flex;
 
-            </form>
+    align-items: center;
+    justify-content: center;
 
-        </div>
+    border-radius: 50%;
 
-    </div>
+    background: var(--surface-soft);
 
+    color: var(--text-secondary);
 
+    font-size: 21px;
 
-    <!-- =========================================================
-         TOAST
-         ========================================================= -->
+    line-height: 1;
 
-    <div
-        class="toast"
-        id="toast"
-        role="status"
-        aria-live="polite"
-    >
-        <span id="toastMessage"></span>
-    </div>
+    transition:
+        transform 160ms var(--ease);
+}
 
 
+.sheet-close:active {
+    transform: scale(0.9);
+}
 
-    <!-- =========================================================
-         LOADING
-         ========================================================= -->
 
-    <div
-        class="loading-screen"
-        id="loadingScreen"
-        hidden
-    >
+.sheet-actions {
+    display: flex;
 
-        <div class="loading-spinner"></div>
+    flex-wrap: wrap;
 
-    </div>
+    gap: 8px;
 
+    margin-top: 21px;
 
-</div>
+    padding-top: 3px;
+}
 
 
-<!-- =============================================================
-     APPLICATION SCRIPT
-     ============================================================= -->
+/* =========================================================
+   24. CATEGORY GRID
+   ========================================================= */
 
-<script src="script.js"></script>
+.category-grid {
+    display: grid;
 
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
 
-<script>
-    /*
-     * Render Lucide icons after the page has loaded.
-     * The main application JS can also call this after
-     * dynamically creating elements.
-     */
-    document.addEventListener("DOMContentLoaded", () => {
+    gap: 8px;
+}
 
-        if (window.lucide) {
-            lucide.createIcons();
-        }
 
-    });
-</script>
+.category-button {
+    min-height: 78px;
 
-</body>
-</html>
+    padding: 10px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    border-radius: 16px;
+
+    background: var(--surface-soft);
+
+    border:
+        1px solid transparent;
+
+    text-align: center;
+
+    transition:
+        transform 160ms var(--ease),
+        background 160ms ease,
+        border-color 160ms ease;
+}
+
+
+.category-button:active {
+    transform: scale(0.94);
+}
+
+
+.category-button:hover {
+    border-color:
+        rgba(109, 74, 255, 0.10);
+}
+
+
+.category-button-icon {
+    width: 32px;
+    height: 32px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--surface);
+
+    color: var(--text-secondary);
+}
+
+
+.category-button-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+
+.category-button-name {
+    max-width: 100%;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    font-size: 10px;
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   25. ACCOUNT SELECTION
+   ========================================================= */
+
+.selection-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+}
+
+
+.selection-option {
+    width: 100%;
+
+    min-height: 62px;
+
+    padding:
+        10px
+        14px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 15px;
+
+    text-align: left;
+
+    border-radius: 15px;
+
+    background: var(--surface-soft);
+
+    transition:
+        transform 160ms var(--ease),
+        background 160ms ease;
+}
+
+
+.selection-option:active {
+    transform: scale(0.985);
+}
+
+
+.selection-option-main {
+    min-width: 0;
+}
+
+
+.selection-option-title {
+    font-size: 12px;
+
+    font-weight: 650;
+}
+
+
+.selection-option-subtitle {
+    margin-top: 3px;
+
+    color: var(--text-secondary);
+
+    font-size: 10px;
+}
+
+
+.selection-option-check {
+    width: 24px;
+    height: 24px;
+
+    flex: 0 0 24px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: var(--purple);
+
+    color: white;
+
+    opacity: 0;
+
+    transform: scale(0.7);
+
+    transition:
+        opacity 160ms ease,
+        transform 160ms var(--ease);
+}
+
+
+.selection-option-check svg {
+    width: 13px;
+    height: 13px;
+}
+
+
+.selection-option.selected {
+    background: var(--purple-soft);
+}
+
+
+.selection-option.selected .selection-option-check {
+    opacity: 1;
+
+    transform: scale(1);
+}
+
+
+/* =========================================================
+   26. FORMS
+   ========================================================= */
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+
+.form-group > label {
+    display: block;
+
+    margin:
+        0
+        0
+        7px
+        2px;
+
+    color: var(--text-secondary);
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+
+    min-height: 49px;
+
+    padding:
+        0
+        14px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 14px;
+
+    background: var(--surface-soft);
+
+    color: var(--text);
+
+    font-size: 13px;
+
+    font-weight: 500;
+
+    transition:
+        border-color 160ms ease,
+        background 160ms ease;
+}
+
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color:
+        rgba(109, 74, 255, 0.35);
+
+    background: white;
+}
+
+
+.form-input-with-prefix {
+    display: flex;
+
+    align-items: center;
+
+    min-height: 49px;
+
+    padding:
+        0
+        14px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 14px;
+
+    background: var(--surface-soft);
+}
+
+
+.form-input-with-prefix > span {
+    margin-right: 5px;
+
+    font-size: 16px;
+
+    font-weight: 600;
+}
+
+
+.form-input-with-prefix input {
+    min-height: auto;
+
+    padding: 0;
+
+    border: 0;
+
+    background: transparent;
+
+    font-size: 16px;
+
+    font-weight: 650;
+}
+
+
+.form-selection {
+    width: 100%;
+
+    min-height: 60px;
+
+    margin-bottom: 8px;
+
+    padding:
+        10px
+        14px;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(70px, auto)
+        1fr
+        auto;
+
+    align-items: center;
+
+    gap: 12px;
+
+    text-align: left;
+
+    background: var(--surface-soft);
+
+    border-radius: 15px;
+}
+
+
+.form-selection > span:first-child {
+    color: var(--text-secondary);
+
+    font-size: 10px;
+
+    font-weight: 600;
+}
+
+
+.form-selection strong {
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    font-size: 12px;
+
+    font-weight: 650;
+}
+
+
+.form-selection > span:last-child {
+    color: var(--text-tertiary);
+
+    font-size: 21px;
+}
+
+
+/* =========================================================
+   27. MANAGED / INVESTMENT / SAVINGS LISTS
+   ========================================================= */
+
+.managed-list,
+.investment-list,
+.savings-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+
+.investment-row,
+.savings-row {
+    min-height: 64px;
+
+    padding:
+        10px
+        12px;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(85px, 0.65fr)
+        auto;
+
+    align-items: center;
+
+    gap: 8px;
+
+    background: var(--surface-soft);
+
+    border-radius: 15px;
+}
+
+
+.investment-row-main,
+.savings-row-main {
+    min-width: 0;
+}
+
+
+.investment-row-title,
+.savings-row-title {
+    font-size: 11px;
+
+    font-weight: 650;
+}
+
+
+.investment-row-subtitle,
+.savings-row-subtitle {
+    margin-top: 3px;
+
+    color: var(--text-secondary);
+
+    font-size: 9px;
+}
+
+
+.investment-row input,
+.savings-row input {
+    width: 100%;
+
+    min-height: 39px;
+
+    padding:
+        0
+        9px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 10px;
+
+    background: white;
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   28. DIALOGS
+   ========================================================= */
+
+.dialog {
+    position: fixed;
+
+    z-index: 300;
+
+    inset: 0;
+
+    padding: 20px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background:
+        rgba(20, 20, 25, 0.28);
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition:
+        opacity 180ms ease;
+
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+
+.dialog.active {
+    opacity: 1;
+
+    pointer-events: auto;
+}
+
+
+.dialog-content {
+    width: 100%;
+    max-width: 360px;
+
+    padding: 24px;
+
+    background: white;
+
+    border-radius: 24px;
+
+    box-shadow: var(--shadow-lg);
+
+    transform: scale(0.96);
+
+    transition:
+        transform
+        180ms
+        var(--ease);
+}
+
+
+.dialog.active .dialog-content {
+    transform: scale(1);
+}
+
+
+.dialog-icon {
+    width: 42px;
+    height: 42px;
+
+    margin:
+        0
+        auto
+        14px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: var(--purple-soft);
+
+    color: var(--purple);
+}
+
+
+.dialog-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+
+.dialog-content h2 {
+    text-align: center;
+
+    font-size: 19px;
+
+    line-height: 1.2;
+
+    letter-spacing: -0.35px;
+}
+
+
+.dialog-content > p {
+    margin-top: 7px;
+
+    color: var(--text-secondary);
+
+    font-size: 12px;
+
+    text-align: center;
+}
+
+
+.dialog-content .form-group {
+    margin-top: 18px;
+
+    margin-bottom: 0;
+}
+
+
+.dialog-actions {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 8px;
+
+    margin-top: 21px;
+}
+
+
+/* =========================================================
+   29. TOAST
+   ========================================================= */
+
+.toast {
+    position: fixed;
+
+    z-index: 400;
+
+    left: 50%;
+
+    bottom:
+        calc(
+            var(--nav-height)
+            + var(--safe-bottom)
+            + 18px
+        );
+
+    transform:
+        translate(
+            -50%,
+            15px
+        );
+
+    max-width:
+        calc(
+            100% - 40px
+        );
+
+    padding:
+        11px
+        16px;
+
+    border-radius: 999px;
+
+    background:
+        rgba(25, 25, 28, 0.93);
+
+    color: white;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    box-shadow: var(--shadow-md);
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition:
+        opacity 180ms ease,
+        transform 180ms var(--ease);
+}
+
+
+.toast.active {
+    opacity: 1;
+
+    transform:
+        translate(
+            -50%,
+            0
+        );
+}
+
+
+/* =========================================================
+   30. RESPONSIVE — TABLET / DESKTOP
+   ========================================================= */
+
+@media (min-width: 700px) {
+
+    .main-content {
+        padding-left: 28px;
+        padding-right: 28px;
+
+        padding-bottom: 125px;
+    }
+
+
+    .app-header {
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+
+
+    .summary-grid {
+        gap: 13px;
+    }
+
+
+    .quick-add-card {
+        gap: 13px;
+
+        padding: 13px;
+    }
+
+
+    .bottom-navigation {
+        bottom: 15px;
+
+        border:
+            1px solid
+            rgba(0, 0, 0, 0.065);
+
+        border-radius: 24px;
+
+        box-shadow:
+            0 12px 40px
+            rgba(0, 0, 0, 0.10);
+
+        padding-bottom: 7px;
+    }
+
+}
+
+
+/* =========================================================
+   31. SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 420px) {
+
+    .main-content {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+
+    .app-header {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+
+    .app-title {
+        font-size: 26px;
+    }
+
+
+    .summary-card {
+        min-height: 105px;
+
+        padding: 15px;
+    }
+
+
+    .summary-value {
+        font-size: 22px;
+    }
+
+
+    .quick-amount {
+        padding: 12px;
+    }
+
+
+    .amount-input {
+        font-size: 24px;
+    }
+
+
+    .currency-symbol {
+        font-size: 20px;
+    }
+
+
+    .category-grid {
+        grid-template-columns:
+            repeat(
+                3,
+                minmax(0, 1fr)
+            );
+    }
+
+}
+
+
+/* =========================================================
+   32. VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 360px) {
+
+    .main-content {
+        padding-left: 11px;
+        padding-right: 11px;
+    }
+
+
+    .app-header {
+        padding-left: 11px;
+        padding-right: 11px;
+    }
+
+
+    .summary-grid {
+        gap: 7px;
+    }
+
+
+    .summary-card {
+        padding: 13px;
+    }
+
+
+    .summary-value {
+        font-size: 20px;
+    }
+
+
+    .quick-add-card {
+        gap: 7px;
+
+        padding: 7px;
+    }
+
+
+    .quick-amount {
+        padding: 10px;
+    }
+
+
+    .quick-amount label {
+        font-size: 10px;
+    }
+
+
+    .amount-input {
+        font-size: 22px;
+    }
+
+
+    .currency-symbol {
+        font-size: 18px;
+    }
+
+
+    .transaction-row {
+        grid-template-columns:
+            38px
+            minmax(0, 1fr)
+            auto;
+
+        gap: 9px;
+    }
+
+
+    .transaction-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+
+    .transaction-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+
+}
+
+
+/* =========================================================
+   33. TOUCH DEVICES
+   ========================================================= */
+
+@media (pointer: coarse) {
+
+    button {
+        min-height: 42px;
+    }
+
+
+    .icon-button {
+        min-width: 42px;
+        min-height: 42px;
+    }
+
+
+    .nav-item {
+        min-height: 52px;
+    }
+
+
+    .account-selector {
+        min-height: 60px;
+    }
+
+
+    .settings-row {
+        min-height: 60px;
+    }
+
+}
+
+
+/* =========================================================
+   34. REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+
+        animation-duration:
+            0.01ms !important;
+
+        animation-iteration-count:
+            1 !important;
+
+        transition-duration:
+            0.01ms !important;
+    }
+
+}
+
+
+/* =========================================================
+   35. DESKTOP WIDTH
+   ========================================================= */
+
+@media (min-width: 1100px) {
+
+    .main-content {
+        padding-top: 10px;
+    }
+
+
+    .bottom-navigation {
+        max-width: 520px;
+    }
+
+}

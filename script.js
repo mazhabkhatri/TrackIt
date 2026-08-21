@@ -1,66 +1,3440 @@
-/* TrackIt — single-file app controller
-   Keeps data local on the device. No account or transaction data is sent anywhere. */
-(() => {
-  "use strict";
-  const KEY="trackit_data_v2", OLD_KEY="trackit_data_v1";
-  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
-  const id=p=>`${p}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-  const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
-  const month=()=>today().slice(0,7);
-  const money=n=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(n)||0);
-  const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
-  const empty={categories:{expenses:[],incomes:[]},accounts:[],investments:[],savings:[],transactions:[],settings:{statistics:{cash:true,bank:true,investments:true,savings:true}}};
-  let data=load(),pending=null,transfer={from:null,to:null},modal=null;
-  function load(){try{const raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY);return normalize(raw?JSON.parse(raw):null)}catch{return normalize(null)}}
-  function normalize(x){const d=structuredClone(empty);if(!x||typeof x!=="object")return d;d.categories.expenses=Array.isArray(x.categories?.expenses)?x.categories.expenses:[];d.categories.incomes=Array.isArray(x.categories?.incomes)?x.categories.incomes:[];d.accounts=Array.isArray(x.accounts)?x.accounts:[];d.investments=Array.isArray(x.investments)?x.investments:[];d.savings=Array.isArray(x.savings)?x.savings:[];d.transactions=Array.isArray(x.transactions)?x.transactions:[];d.settings.statistics={...d.settings.statistics,...(x.settings?.statistics||{})};return d}
-  function save(){localStorage.setItem(KEY,JSON.stringify(data))} function primary(type){return data.accounts.find(a=>a.type===type&&a.primary)||null}
-  function balance(aid){return data.transactions.reduce((b,t)=>{const n=+t.amount||0;if(t.type==="expense"&&t.accountId===aid)return b-n;if(t.type==="income"&&t.accountId===aid)return b+n;if(t.type==="transfer"){if(t.fromAccountId===aid)b-=n;if(t.toAccountId===aid)b+=n}return b},0)}
-  function sums(list){return list.reduce((r,t)=>{if(t.type==="expense")r.e+=+t.amount;if(t.type==="income")r.i+=+t.amount;return r},{e:0,i:0})}
-  function txToday(t){return t.date===today()} function txMonth(t){return t.date?.slice(0,7)===month()} function setText(i,v){const e=document.getElementById(i);if(e)e.textContent=v}
-  function boot(){injectStyle();setupNavigation();setupInputs();setupGlobalActions();setupTransfer();renderAll();save();window.lucide?.createIcons()}
-  function setupNavigation(){$$(".nav-item").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));$("#headerSettingsButton")?.addEventListener("click",()=>go("settingsPage"));$("#viewAllTransactionsButton")?.addEventListener("click",()=>go("transactionsPage"))}
-  function go(page){const pageId=page.endsWith("Page")?page:page+"Page";$$('.page').forEach(p=>p.classList.toggle('active',p.id===pageId));$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===pageId));if(pageId==='dashboardPage')renderDashboard();if(pageId==='transactionsPage')renderTransactions();if(pageId==='statisticsPage')renderStatistics();if(pageId==='settingsPage')renderSettings();scrollTo({top:0,behavior:'smooth'})} window.switchPage=go;
-  function setupInputs(){const map={expenseCashAmount:['expense','cash'],expenseBankAmount:['expense','bank'],incomeCashAmount:['income','cash'],incomeBankAmount:['income','bank']};Object.entries(map).forEach(([eid,[type,acct]])=>{const el=$('#'+eid);if(!el)return;el.dataset.entryType=type;el.dataset.accountType=acct;el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();startQuick(el,type,acct)}});el.addEventListener('input',()=>{el.value=el.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1')})})}
-  function startQuick(input,type,acct){const amount=+input.value;if(!amount||amount<=0){input.focus();toast('Enter an amount first.');return}const a=primary(acct);if(!a){toast(`Add a primary ${acct} account first.`);openSettingsSection('accounts');return}const cats=data.categories[type+'s']||[];if(!cats.length){toast(`Add an ${type} category first.`);openSettingsSection(type+'Categories');return}pending={input,type,accountId:a.id,amount};openPicker(type,cats)}
-  function openPicker(type,cats){showModal(`<div class="modal-head"><div><small>ADD ${type.toUpperCase()}</small><h2>Choose category</h2></div><button class="modal-close" data-close>×</button></div><div class="picker-list">${cats.map(c=>`<button class="picker-option" data-cat="${esc(c.id)}"><span>${esc(c.name)}</span><span>›</span></button>`).join('')}</div>`);$$('[data-cat]').forEach(b=>b.onclick=()=>{const c=cats.find(x=>x.id===b.dataset.cat);if(c)finishQuick(c)})}
-  function finishQuick(c){if(!pending)return;data.transactions.push({id:id('tx'),type:pending.type,amount:pending.amount,accountId:pending.accountId,categoryId:c.id,categoryName:c.name,date:today(),createdAt:Date.now()});pending.input.value='';const type=pending.type;pending=null;closeModal();save();renderAll();toast(`${type==='expense'?'Expense':'Income'} added.`)}
-  function setupTransfer(){$('#transferFromButton')?.addEventListener('click',()=>pickAccount('from'));$('#transferToButton')?.addEventListener('click',()=>pickAccount('to'));$('#transferButton')?.addEventListener('click',addTransfer)}
-  function pickAccount(side){if(data.accounts.length<2){toast('Add at least two accounts to transfer money.');openSettingsSection('accounts');return}showModal(`<div class="modal-head"><div><small>SELF TRANSFER</small><h2>Choose account</h2></div><button class="modal-close" data-close>×</button></div><div class="picker-list">${data.accounts.map(a=>`<button class="picker-option" data-acct="${a.id}"><span>${esc(a.name)} · ${a.type}</span><span>›</span></button>`).join('')}</div>`);$$('[data-acct]').forEach(b=>b.onclick=()=>{transfer[side]=b.dataset.acct;updateTransferLabels();closeModal()})}
-  function updateTransferLabels(){const f=data.accounts.find(a=>a.id===transfer.from)||primary('cash'),t=data.accounts.find(a=>a.id===transfer.to)||primary('bank');setText('transferFromValue',f?.name||'Select account');setText('transferToValue',t?.name||'Select account')}
-  function addTransfer(){const amount=+$('#transferAmount')?.value,f=data.accounts.find(a=>a.id===transfer.from)||primary('cash'),t=data.accounts.find(a=>a.id===transfer.to)||primary('bank');if(!f||!t){toast('Choose both accounts.');return}if(f.id===t.id){toast('Choose two different accounts.');return}if(!amount||amount<=0){toast('Enter an amount.');return}data.transactions.push({id:id('tx'),type:'transfer',amount,fromAccountId:f.id,toAccountId:t.id,date:today(),createdAt:Date.now()});$('#transferAmount').value='';save();renderAll();toast('Transfer completed.')}
-  function renderAll(){renderDashboard();renderTransactions();renderStatistics();renderSettings();updateTransferLabels()}
-  function renderDashboard(){const st=sums(data.transactions.filter(txToday)),sm=sums(data.transactions.filter(txMonth));setText('todayExpense',money(st.e));setText('todayIncome',money(st.i));setText('monthExpense',money(sm.e));setText('monthIncome',money(sm.i));setText('todayNet',money(st.i-st.e));setText('monthNet',money(sm.i-sm.e));const cash=primary('cash'),bank=primary('bank');setText('shiftCashBalance',money(cash?balance(cash.id):0));setText('shiftBankBalance',money(bank?balance(bank.id):0));setText('shiftTodayTransfers',money(data.transactions.filter(t=>txToday(t)&&t.type==='transfer').reduce((s,t)=>s+ +t.amount,0)));['expenseCashAmount','incomeCashAmount'].forEach(i=>$("#"+i)?.closest('.quick-amount')?.querySelector('label')?.replaceChildren(document.createTextNode(cash?.name||'Primary Cash')));['expenseBankAmount','incomeBankAmount'].forEach(i=>$("#"+i)?.closest('.quick-amount')?.querySelector('label')?.replaceChildren(document.createTextNode(bank?.name||'Primary Bank')));const notice=$('#accountSetupNotice');if(notice)notice.hidden=!!(cash&&bank);renderToday()}
-  function renderToday(){const el=$('#todayTransactions');if(!el)return;const list=data.transactions.filter(txToday).sort((a,b)=>b.createdAt-a.createdAt);setText('todayCount',String(list.length));el.innerHTML=list.length?list.map(txHTML).join(''):'<div class="empty-state">No transactions today.</div>';bindTxGestures(el)}
-  function renderTransactions(){const el=$('#allTransactions');if(!el)return;const list=[...data.transactions].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.createdAt-a.createdAt);el.innerHTML=list.length?list.map(txHTML).join(''):'<div class="empty-state">No transactions yet.</div>';bindTxGestures(el)}
-  function txHTML(t){const is=t.type==='transfer',title=is?'Self transfer':(t.categoryName||t.type),acct=is?`${esc(data.accounts.find(a=>a.id===t.fromAccountId)?.name||'')} → ${esc(data.accounts.find(a=>a.id===t.toAccountId)?.name||'')}`:esc(data.accounts.find(a=>a.id===t.accountId)?.name||''),sign=t.type==='income'?'+':t.type==='expense'?'−':'↔';return `<article class="transaction-row" data-tx="${t.id}"><div class="tx-main"><strong>${esc(title)}</strong><small>${t.date||''} · ${acct}</small></div><strong class="tx-amount ${t.type}">${sign}${money(t.amount)}</strong></article>`}
-  function bindTxGestures(root){$$('.transaction-row',root).forEach(row=>{let sx=0,drag=false;row.addEventListener('touchstart',e=>sx=e.touches[0].clientX,{passive:true});row.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(dx<-70){drag=true;deleteTransaction(row.dataset.tx);setTimeout(()=>drag=false,250)}},{passive:true});let down=false,st=0;row.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){down=true;st=e.clientX}});row.addEventListener('pointerup',e=>{if(!down)return;down=false;if(st-e.clientX>90){drag=true;deleteTransaction(row.dataset.tx);setTimeout(()=>drag=false,250)}});row.addEventListener('click',()=>{if(!drag)editTransaction(row.dataset.tx)})})}
-  function deleteTransaction(tid){const i=data.transactions.findIndex(t=>t.id===tid);if(i<0)return;data.transactions.splice(i,1);save();renderAll();toast('Transaction deleted.')}
-  function editTransaction(tid){const t=data.transactions.find(x=>x.id===tid);if(!t)return;showModal(`<div class="modal-head"><div><small>EDIT ${t.type.toUpperCase()}</small><h2>${esc(t.categoryName||'Self transfer')}</h2></div><button class="modal-close" data-close>×</button></div><label>Amount<input id="editAmount" type="number" inputmode="decimal" value="${t.amount}"></label><label>Date<input id="editDate" type="date" value="${t.date}"></label><div class="modal-actions"><button class="primary-action" id="saveEdit">Save</button><button class="danger-action" id="deleteEdit">Delete</button></div>`);$('#saveEdit').onclick=()=>{t.amount=+$('#editAmount').value||t.amount;t.date=$('#editDate').value||t.date;save();closeModal();renderAll()};$('#deleteEdit').onclick=()=>{deleteTransaction(tid);closeModal()}}
-  function renderStatistics(){const el=$('#statisticsContent');if(!el)return;const t=data.transactions.filter(x=>x.type!=='transfer'),tm=t.filter(txMonth),tt=t.filter(txToday),m=sums(tm),d=sums(tt),avg=m.i/Math.max(1,new Date().getDate()),enabled=data.settings.statistics,ab=data.accounts.filter(a=>a.type==='cash'?enabled.cash:enabled.bank).reduce((s,a)=>s+balance(a.id),0),inv=enabled.investments?data.investments.reduce((s,i)=>s+(+i.amount||0),0):0,sav=enabled.savings?data.savings.reduce((s,i)=>s+(+i.current||0),0):0;el.innerHTML=`<div class="stats-card"><span>Today's net</span><strong>${money(d.i-d.e)}</strong></div><div class="stats-card"><span>This month's net</span><strong>${money(m.i-m.e)}</strong></div><div class="stats-card"><span>Average daily income</span><strong>${money(avg)}</strong><small>Based on this month so far</small></div><div class="stats-card"><span>Cash + bank balances</span><strong>${money(ab)}</strong></div><div class="stats-card"><span>Investments counted</span><strong>${money(inv)}</strong></div><div class="stats-card"><span>Savings counted</span><strong>${money(sav)}</strong></div>`}
-  function renderSettings(){const el=$('#settingsContent');if(!el)return;el.innerHTML=`<div class="settings-stack">${settingsBlock('Expense categories','Only categories you create are shown.',data.categories.expenses,'expense')}${settingsBlock('Income categories','Only categories you create are shown.',data.categories.incomes,'income')}${accountsBlock()}${investmentsBlock()}${savingsBlock()}<section class="settings-group"><div class="settings-title"><div><h3>Data</h3><p>Portable backup and statement export.</p></div></div><div class="settings-actions"><button data-export-json>Export JSON</button><button data-import-json>Import JSON</button><button data-export-pdf>Export statement PDF</button></div></section></div>`;$$('[data-add-cat]').forEach(b=>b.onclick=()=>addCategory(b.dataset.addCat));$$('[data-del-cat]').forEach(b=>b.onclick=()=>deleteCategory(b.dataset.delCat,b.dataset.type));$$('[data-edit-cat]').forEach(b=>b.onclick=()=>editCategory(b.dataset.editCat,b.dataset.type));$$('[data-add-account]').forEach(b=>b.onclick=addAccount);$$('[data-primary]').forEach(b=>b.onchange=()=>setPrimary(b.dataset.primary,b.dataset.type,b.checked));$$('[data-del-account]').forEach(b=>b.onclick=()=>deleteAccount(b.dataset.delAccount));$$('[data-add-investment]').forEach(b=>b.onclick=addInvestment);$$('[data-del-investment]').forEach(b=>b.onclick=()=>deleteInvestment(b.dataset.delInvestment));$$('[data-add-saving]').forEach(b=>b.onclick=addSaving);$$('[data-del-saving]').forEach(b=>b.onclick=()=>deleteSaving(b.dataset.delSaving));$$('[data-stat-toggle]').forEach(b=>b.onchange=()=>{data.settings.statistics[b.dataset.statToggle]=b.checked;save();renderStatistics()});$('[data-export-json]')?.addEventListener('click',exportJSON);$('[data-import-json]')?.addEventListener('click',importJSON);$('[data-export-pdf]')?.addEventListener('click',exportPDF)}
-  function settingsBlock(title,desc,cats,type){return `<section class="settings-group"><div class="settings-title"><div><h3>${title}</h3><p>${desc}</p></div><button data-add-cat="${type}">Add</button></div><div class="settings-list">${cats.length?cats.map(c=>`<div class="setting-row"><span>${esc(c.name)}</span><span><button data-edit-cat="${c.id}" data-type="${type}">Edit</button><button class="danger-text" data-del-cat="${c.id}" data-type="${type}">Delete</button></span></div>`).join(''):'<div class="empty-state">No categories yet.</div>'}</div></section>`}
-  function accountsBlock(){return `<section class="settings-group" id="accounts"><div class="settings-title"><div><h3>Accounts</h3><p>Add at least one Cash and one Bank account. Choose one primary in each type.</p></div><button data-add-account>Add</button></div><div class="settings-list">${data.accounts.length?data.accounts.map(a=>`<div class="setting-row account-row"><div><strong>${esc(a.name)}</strong><small>${a.type} · ${money(balance(a.id))}</small></div><span><label class="switch"><input type="checkbox" data-primary="${a.id}" data-type="${a.type}" ${a.primary?'checked':''}><i></i></label><button class="danger-text" data-del-account="${a.id}">Delete</button></span></div>`).join(''):'<div class="empty-state">No accounts yet.</div>'}</div></section>`}
-  function investmentsBlock(){return `<section class="settings-group" id="investments"><div class="settings-title"><div><h3>Investments</h3><p>Track amount and expected/actual return percentage.</p></div><button data-add-investment>Add</button></div><div class="settings-list">${data.investments.map(i=>`<div class="setting-row"><div><strong>${esc(i.name)}</strong><small>${money(i.amount)} · ${+i.returnPct||0}% return</small></div><span><button class="danger-text" data-del-investment="${i.id}">Delete</button></span></div>`).join('')||'<div class="empty-state">No investments yet.</div>'}</div><label class="stat-setting"><span>Count investments in statistics</span><label class="switch"><input type="checkbox" data-stat-toggle="investments" ${data.settings.statistics.investments?'checked':''}><i></i></label></label></section>`}
-  function savingsBlock(){return `<section class="settings-group" id="savings"><div class="settings-title"><div><h3>Savings</h3><p>Track what you want to save and your goal amount.</p></div><button data-add-saving>Add</button></div><div class="settings-list">${data.savings.map(s=>`<div class="setting-row"><div><strong>${esc(s.name)}</strong><small>${money(s.current)} / ${money(s.goal)}</small></div><span><button class="danger-text" data-del-saving="${s.id}">Delete</button></span></div>`).join('')||'<div class="empty-state">No savings goals yet.</div>'}</div><label class="stat-setting"><span>Count savings in statistics</span><label class="switch"><input type="checkbox" data-stat-toggle="savings" ${data.settings.statistics.savings?'checked':''}><i></i></label></label></section>`}
-  function addCategory(type){const n=prompt(`Add ${type} category`);if(!n?.trim())return;data.categories[type+'s'].push({id:id('cat'),name:n.trim()});save();renderSettings()}
-  function editCategory(cid,type){const c=data.categories[type+'s'].find(x=>x.id===cid);if(!c)return;const n=prompt('Category name',c.name);if(n?.trim()){c.name=n.trim();data.transactions.filter(t=>t.categoryId===cid).forEach(t=>t.categoryName=c.name);save();renderAll()}}
-  function deleteCategory(cid,type){if(data.transactions.some(t=>t.categoryId===cid)){toast('This category is used by a transaction.');return}data.categories[type+'s']=data.categories[type+'s'].filter(c=>c.id!==cid);save();renderSettings()}
-  function addAccount(){showModal(`<div class="modal-head"><div><small>ACCOUNT</small><h2>Add account</h2></div><button class="modal-close" data-close>×</button></div><label>Name<input id="newName" maxlength="40" autofocus></label><label>Type<select id="newType"><option value="cash">Cash</option><option value="bank">Bank</option></select></label><div class="modal-actions"><button class="primary-action" id="saveAccount">Add account</button></div>`);$('#saveAccount').onclick=()=>{const n=$('#newName').value.trim(),type=$('#newType').value;if(!n)return;data.accounts.push({id:id('acc'),name:n,type,primary:!data.accounts.some(a=>a.type===type)});save();closeModal();renderAll()}}
-  function setPrimary(aid,type,on){if(!on)return;data.accounts.filter(a=>a.type===type).forEach(a=>a.primary=a.id===aid);save();renderAll()}
-  function deleteAccount(aid){if(data.transactions.some(t=>t.accountId===aid||t.fromAccountId===aid||t.toAccountId===aid)){toast('This account has transactions and cannot be deleted.');return}const a=data.accounts.find(x=>x.id===aid);data.accounts=data.accounts.filter(x=>x.id!==aid);const rep=data.accounts.find(x=>x.type===a?.type);if(rep)rep.primary=true;save();renderAll()}
-  function addInvestment(){showModal(`<div class="modal-head"><div><small>INVESTMENT</small><h2>Add investment</h2></div><button class="modal-close" data-close>×</button></div><label>Name<input id="newName"></label><label>Amount<input id="newAmount" type="number"></label><label>Return %<input id="newReturn" type="number" step="0.01"></label><div class="modal-actions"><button class="primary-action" id="saveItem">Add</button></div>`);$('#saveItem').onclick=()=>{const n=$('#newName').value.trim();if(!n)return;data.investments.push({id:id('inv'),name:n,amount:+$('#newAmount').value||0,returnPct:+$('#newReturn').value||0});save();closeModal();renderAll()}}
-  function deleteInvestment(i){data.investments=data.investments.filter(x=>x.id!==i);save();renderAll()}
-  function addSaving(){showModal(`<div class="modal-head"><div><small>SAVINGS</small><h2>Add savings goal</h2></div><button class="modal-close" data-close>×</button></div><label>Name<input id="newName"></label><label>Goal amount<input id="newGoal" type="number"></label><label>Current saved<input id="newCurrent" type="number"></label><div class="modal-actions"><button class="primary-action" id="saveItem">Add</button></div>`);$('#saveItem').onclick=()=>{const n=$('#newName').value.trim();if(!n)return;data.savings.push({id:id('sav'),name:n,goal:+$('#newGoal').value||0,current:+$('#newCurrent').value||0});save();closeModal();renderAll()}}
-  function deleteSaving(i){data.savings=data.savings.filter(x=>x.id!==i);save();renderAll()}
-  function setupGlobalActions(){$('#setupAccountsButton')?.addEventListener('click',()=>openSettingsSection('accounts'));$('#editInvestmentsButton')?.addEventListener('click',()=>openSettingsSection('investments'));$('#editSavingsButton')?.addEventListener('click',()=>openSettingsSection('savings'));document.addEventListener('click',e=>{if(e.target.closest('[data-close]'))closeModal()})}
-  function openSettingsSection(n){go('settingsPage');setTimeout(()=>$('#'+n)?.scrollIntoView({behavior:'smooth',block:'start'}),80)}
-  function showModal(html){closeModal();const root=$('#modal');if(root){root.hidden=false;$('#modalContent').innerHTML=html;root.querySelector('.modal-backdrop')?.addEventListener('click',closeModal);modal=root}else{const w=document.createElement('div');w.id='trackitDynamicModal';w.className='trackit-modal-overlay';w.innerHTML=`<div class="trackit-modal-backdrop"></div><div class="trackit-modal">${html}</div>`;document.body.appendChild(w);w.querySelector('.trackit-modal-backdrop').onclick=closeModal;modal=w}document.body.classList.add('modal-open')}
-  function closeModal(){if(!modal)return;if(modal.id==='trackitDynamicModal')modal.remove();else modal.hidden=true;modal=null;document.body.classList.remove('modal-open')}
-  function toast(msg){let t=$('#trackitToast');if(!t){t=document.createElement('div');t.id='trackitToast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),2200)}
-  function exportJSON(){download(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),`trackit-backup-${today()}.json`)}
-  function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=async()=>{try{data=normalize(JSON.parse(await i.files[0].text()));save();renderAll();toast('Data imported.')}catch{toast('Invalid JSON file.')}};i.click()}
-  function exportPDF(){const st=sums(data.transactions.filter(txMonth)),lines=['TrackIt — Statement',`Generated: ${new Date().toLocaleString('en-IN')}`,'',`This month income: ${money(st.i)}`,`This month expenses: ${money(st.e)}`,`This month net: ${money(st.i-st.e)}`,'',...data.transactions.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>`${t.date} | ${t.type} | ${t.categoryName||'Self transfer'} | ${money(t.amount)}`)];const w=open('','_blank');if(!w){toast('Allow pop-ups to export PDF.');return}w.document.write(`<pre style="font:14px/1.6 Arial;white-space:pre-wrap;padding:32px">${esc(lines.join('\n'))}</pre>`);w.document.close();w.focus();setTimeout(()=>w.print(),300)}
-  function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
-  function injectStyle(){if($('#trackit-runtime-style'))return;const s=document.createElement('style');s.id='trackit-runtime-style';s.textContent=`.settings-stack{display:grid;gap:16px}.settings-group,.stats-card{background:var(--card,#fff);border:1px solid rgba(40,30,60,.08);border-radius:20px;padding:18px}.settings-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.settings-title h3{margin:0}.settings-title p,.setting-row small{display:block;color:#777;margin:5px 0 0;font-size:.84rem}.settings-list{margin-top:12px}.setting-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px 0;border-top:1px solid rgba(40,30,60,.07)}.setting-row button,.settings-title button,.settings-actions button{border:0;background:#f1eef7;border-radius:12px;padding:9px 12px;cursor:pointer}.danger-text{color:#b42318!important}.settings-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.stats-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stats-card span{display:block;color:#777}.stats-card strong{display:block;font-size:1.45rem;margin-top:8px}.stats-card small{display:block;color:#888;margin-top:5px}.stat-setting{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(40,30,60,.07);padding-top:13px;margin-top:13px}.switch{display:inline-flex;position:relative}.switch input{position:absolute;opacity:0}.switch i{display:block;width:44px;height:26px;border-radius:99px;background:#d8d5dc;position:relative;transition:.2s}.switch i:after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;box-shadow:0 1px 3px #999;transition:.2s}.switch input:checked+i{background:#6f4bd8}.switch input:checked+i:after{transform:translateX(18px)}.modal-open{overflow:hidden}.trackit-modal-overlay{position:fixed;inset:0;z-index:1000;display:grid;align-items:end}.trackit-modal-backdrop{position:absolute;inset:0;background:rgba(20,15,30,.28);backdrop-filter:blur(5px)}.trackit-modal{position:relative;background:#fff;border-radius:26px 26px 0 0;padding:22px;max-height:88vh;overflow:auto;box-shadow:0 -10px 40px rgba(30,20,50,.16)}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}.modal-head small{letter-spacing:.08em;color:#777}.modal-head h2{margin:4px 0 0}.modal-close{border:0;background:#f0edf4;border-radius:50%;width:36px;height:36px;font-size:22px}.picker-list{display:grid;gap:8px}.picker-option{display:flex;justify-content:space-between;align-items:center;width:100%;padding:16px;border:0;background:#f7f5fa;border-radius:16px;text-align:left;font-size:1rem}.modal-actions{display:flex;gap:8px;justify-content:flex-start;margin-top:18px}.danger-action{border:0;border-radius:12px;padding:11px 15px;background:#fdeceb;color:#b42318}.trackit-modal label{display:block;font-size:.86rem;color:#666;margin:12px 0}.trackit-modal input,.trackit-modal select{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:13px;border:1px solid #ddd8e4;border-radius:12px;font:inherit;background:#fff}.trackit-modal .primary-action{border:0;border-radius:12px;padding:12px 16px;background:#6f4bd8;color:#fff}.empty-state{padding:24px;text-align:center;color:#888}.tx-amount.expense{color:#b42318}.tx-amount.income{color:#207a45}.tx-amount.transfer{color:#6f4bd8}#trackitToast{position:fixed;left:50%;bottom:88px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#211d27;color:#fff;padding:11px 16px;border-radius:999px;z-index:1200;transition:.2s}#trackitToast.show{opacity:1;transform:translate(-50%,0)}@media(max-width:600px){.stats-list{grid-template-columns:1fr}.settings-actions button{flex:1}.trackit-modal{padding:18px}.setting-row{align-items:flex-start}.setting-row>span:last-child{display:flex;align-items:center;gap:6px}}`;document.head.appendChild(s)}
-  document.addEventListener('DOMContentLoaded',boot);
-})();
+/* =========================================================
+   TRACKIT
+   Main application logic
+   ========================================================= */
+
+
+/* =========================================================
+   1. DEFAULT DATA
+   ========================================================= */
+
+const DEFAULT_DATA = {
+    transactions: [],
+
+    expenseCategories: [
+        "Food",
+        "Transport",
+        "Shopping",
+        "Bills",
+        "Education",
+        "Entertainment",
+        "Health",
+        "Other"
+    ],
+
+    incomeCategories: [
+        "Salary",
+        "Freelance",
+        "Business",
+        "Gift",
+        "Interest",
+        "Other"
+    ],
+
+    cashAccounts: [
+        {
+            id: "cash-default",
+            name: "Cash",
+            primary: true,
+            countInStatistics: true
+        }
+    ],
+
+    bankAccounts: [
+        {
+            id: "bank-default",
+            name: "Bank",
+            primary: true,
+            countInStatistics: true
+        }
+    ]
+};
+
+
+/* =========================================================
+   2. APPLICATION STATE
+   ========================================================= */
+
+let appData = loadData();
+
+let currentEntry = {
+    type: null,
+    accountType: null,
+    accountId: null,
+    amount: 0
+};
+
+let editingTransactionId = null;
+
+let managementMode = null;
+
+
+/* =========================================================
+   3. DOM HELPERS
+   ========================================================= */
+
+const $ = (selector) => document.querySelector(selector);
+
+const $$ = (selector) => document.querySelectorAll(selector);
+
+
+/* =========================================================
+   4. INITIALIZATION
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    initializeIcons();
+
+    setupNavigation();
+    setupQuickEntry();
+    setupAmountModal();
+    setupCategoryModal();
+    setupEditModal();
+    setupSettings();
+    setupCategoryManagement();
+    setupAccountManagement();
+    setupDataManagement();
+
+    refreshApp();
+
+});
+
+
+/* =========================================================
+   5. ICONS
+   ========================================================= */
+
+function initializeIcons() {
+
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+
+}
+
+
+/* =========================================================
+   6. LOCAL STORAGE
+   ========================================================= */
+
+function loadData() {
+
+    try {
+
+        const saved = localStorage.getItem("trackitData");
+
+        if (!saved) {
+            return structuredClone(DEFAULT_DATA);
+        }
+
+        const parsed = JSON.parse(saved);
+
+        return {
+            ...structuredClone(DEFAULT_DATA),
+            ...parsed,
+
+            transactions: Array.isArray(parsed.transactions)
+                ? parsed.transactions
+                : [],
+
+            expenseCategories:
+                Array.isArray(parsed.expenseCategories)
+                    ? parsed.expenseCategories
+                    : [...DEFAULT_DATA.expenseCategories],
+
+            incomeCategories:
+                Array.isArray(parsed.incomeCategories)
+                    ? parsed.incomeCategories
+                    : [...DEFAULT_DATA.incomeCategories],
+
+            cashAccounts:
+                Array.isArray(parsed.cashAccounts)
+                    ? parsed.cashAccounts
+                    : structuredClone(DEFAULT_DATA.cashAccounts),
+
+            bankAccounts:
+                Array.isArray(parsed.bankAccounts)
+                    ? parsed.bankAccounts
+                    : structuredClone(DEFAULT_DATA.bankAccounts)
+        };
+
+    } catch (error) {
+
+        console.error("Could not load TrackIt data:", error);
+
+        return structuredClone(DEFAULT_DATA);
+    }
+
+}
+
+
+function saveData() {
+
+    localStorage.setItem(
+        "trackitData",
+        JSON.stringify(appData)
+    );
+
+}
+
+
+/* =========================================================
+   7. NAVIGATION
+   ========================================================= */
+
+function setupNavigation() {
+
+    $$(".nav-item").forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            const pageId = button.dataset.page;
+
+            showPage(pageId);
+
+        });
+
+    });
+
+
+    $("#viewAllButton")?.addEventListener("click", () => {
+        showPage("transactionsPage");
+    });
+
+}
+
+
+function showPage(pageId) {
+
+    $$(".page").forEach(page => {
+        page.classList.remove("active");
+    });
+
+    $(`#${pageId}`)?.classList.add("active");
+
+
+    $$(".nav-item").forEach(button => {
+
+        button.classList.toggle(
+            "active",
+            button.dataset.page === pageId
+        );
+
+    });
+
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+
+    refreshApp();
+
+}
+
+
+/* =========================================================
+   8. QUICK ENTRY
+   ========================================================= */
+
+function setupQuickEntry() {
+
+    $$(".money-card").forEach(card => {
+
+        card.addEventListener("click", () => {
+
+            const type = card.dataset.type;
+            const accountType = card.dataset.accountType;
+
+            openAmountModal(type, accountType);
+
+        });
+
+    });
+
+}
+
+
+/* =========================================================
+   9. ACCOUNT HELPERS
+   ========================================================= */
+
+function getAccounts(accountType) {
+
+    return accountType === "cash"
+        ? appData.cashAccounts
+        : appData.bankAccounts;
+
+}
+
+
+function getPrimaryAccount(accountType) {
+
+    const accounts = getAccounts(accountType);
+
+    let primary = accounts.find(account => account.primary);
+
+    if (!primary && accounts.length > 0) {
+
+        primary = accounts[0];
+        primary.primary = true;
+
+        saveData();
+    }
+
+    return primary || null;
+
+}
+
+
+function getAccountById(accountType, accountId) {
+
+    return getAccounts(accountType)
+        .find(account => account.id === accountId);
+}
+
+
+function getAccountName(accountType, accountId) {
+
+    const account = getAccountById(
+        accountType,
+        accountId
+    );
+
+    return account ? account.name : "Unknown account";
+}
+
+
+/* =========================================================
+   10. UPDATE QUICK ENTRY ACCOUNT NAMES
+   ========================================================= */
+
+function updateQuickEntryCards() {
+
+    const cash = getPrimaryAccount("cash");
+    const bank = getPrimaryAccount("bank");
+
+    const cashName = cash ? cash.name : "Cash";
+    const bankName = bank ? bank.name : "Bank";
+
+
+    $("#expenseCashName").textContent = cashName;
+    $("#incomeCashName").textContent = cashName;
+
+    $("#expenseBankName").textContent = bankName;
+    $("#incomeBankName").textContent = bankName;
+
+
+    const cashExpenses = getAccountTotal(
+        "cash",
+        "expense"
+    );
+
+    const bankExpenses = getAccountTotal(
+        "bank",
+        "expense"
+    );
+
+    const cashIncome = getAccountTotal(
+        "cash",
+        "income"
+    );
+
+    const bankIncome = getAccountTotal(
+        "bank",
+        "income"
+    );
+
+
+    $("#expenseCashAmount").textContent =
+        formatNumber(cashExpenses);
+
+    $("#expenseBankAmount").textContent =
+        formatNumber(bankExpenses);
+
+    $("#incomeCashAmount").textContent =
+        formatNumber(cashIncome);
+
+    $("#incomeBankAmount").textContent =
+        formatNumber(bankIncome);
+
+}
+
+
+function getAccountTotal(accountType, type) {
+
+    const account = getPrimaryAccount(accountType);
+
+    if (!account) return 0;
+
+    return appData.transactions
+        .filter(transaction => {
+
+            return (
+                transaction.accountType === accountType &&
+                transaction.accountId === account.id &&
+                transaction.type === type
+            );
+
+        })
+        .reduce(
+            (total, transaction) =>
+                total + Number(transaction.amount),
+            0
+        );
+
+}
+
+
+/* =========================================================
+   11. AMOUNT MODAL
+   ========================================================= */
+
+function setupAmountModal() {
+
+    $("#closeAmountModal")?.addEventListener(
+        "click",
+        closeAmountModal
+    );
+
+    $("#cancelAmount")?.addEventListener(
+        "click",
+        closeAmountModal
+    );
+
+    $("#continueAmount")?.addEventListener(
+        "click",
+        continueAmount
+    );
+
+
+    $("#amountInput")?.addEventListener(
+        "keydown",
+        event => {
+
+            if (event.key === "Enter") {
+
+                event.preventDefault();
+
+                continueAmount();
+
+            }
+
+        }
+    );
+
+
+    $("#amountModal")?.addEventListener(
+        "click",
+        event => {
+
+            if (event.target === $("#amountModal")) {
+                closeAmountModal();
+            }
+
+        }
+    );
+
+}
+
+
+function openAmountModal(type, accountType) {
+
+    const account = getPrimaryAccount(accountType);
+
+    if (!account) {
+
+        alert(
+            `Please add a ${accountType} account first.`
+        );
+
+        return;
+    }
+
+
+    currentEntry = {
+        type,
+        accountType,
+        accountId: account.id,
+        amount: 0
+    };
+
+
+    $("#amountModalType").textContent =
+        type === "expense"
+            ? "Expense"
+            : "Income";
+
+    $("#selectedAccountName").textContent =
+        account.name;
+
+    $("#amountInput").value = "";
+
+
+    openModal("#amountModal");
+
+
+    setTimeout(() => {
+
+        $("#amountInput")?.focus();
+
+    }, 250);
+
+}
+
+
+function continueAmount() {
+
+    const input = $("#amountInput");
+
+    const amount = Number(input.value);
+
+    if (!amount || amount <= 0) {
+
+        input.focus();
+
+        return;
+    }
+
+
+    currentEntry.amount = amount;
+
+    closeModal("#amountModal");
+
+    openCategoryModal();
+
+}
+
+
+/* =========================================================
+   12. CATEGORY MODAL
+   ========================================================= */
+
+function setupCategoryModal() {
+
+    $("#closeCategoryModal")?.addEventListener(
+        "click",
+        closeCategoryModal
+    );
+
+}
+
+
+function openCategoryModal() {
+
+    const categories =
+        currentEntry.type === "expense"
+            ? appData.expenseCategories
+            : appData.incomeCategories;
+
+
+    $("#categoryModalType").textContent =
+        currentEntry.type === "expense"
+            ? "Expense"
+            : "Income";
+
+
+    const grid = $("#categoryGrid");
+
+    grid.innerHTML = "";
+
+
+    categories.forEach((category, index) => {
+
+        const button =
+            document.createElement("button");
+
+        button.className = "category-button";
+
+        button.type = "button";
+
+        button.innerHTML = `
+            <span class="category-symbol">
+                <i data-lucide="${getCategoryIcon(category)}"></i>
+            </span>
+
+            <span>${escapeHTML(category)}</span>
+        `;
+
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                createTransaction(category);
+
+            }
+        );
+
+
+        grid.appendChild(button);
+
+    });
+
+
+    initializeIcons();
+
+    openModal("#categoryModal");
+
+}
+
+
+function closeCategoryModal() {
+
+    closeModal("#categoryModal");
+
+}
+
+
+/* =========================================================
+   13. CREATE TRANSACTION
+   ========================================================= */
+
+function createTransaction(category) {
+
+    const now = new Date();
+
+    const transaction = {
+
+        id:
+            crypto.randomUUID
+            ? crypto.randomUUID()
+            : Date.now().toString(),
+
+        type: currentEntry.type,
+
+        amount: Number(currentEntry.amount),
+
+        category,
+
+        accountType:
+            currentEntry.accountType,
+
+        accountId:
+            currentEntry.accountId,
+
+        date:
+            formatDateInput(now),
+
+        time:
+            formatTimeInput(now)
+
+    };
+
+
+    appData.transactions.push(transaction);
+
+    saveData();
+
+    closeCategoryModal();
+
+    refreshApp();
+
+}
+
+
+/* =========================================================
+   14. DATE HELPERS
+   ========================================================= */
+
+function formatDateInput(date) {
+
+    const year = date.getFullYear();
+
+    const month = String(
+        date.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+        date.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function formatTimeInput(date) {
+
+    const hours = String(
+        date.getHours()
+    ).padStart(2, "0");
+
+    const minutes = String(
+        date.getMinutes()
+    ).padStart(2, "0");
+
+    return `${hours}:${minutes}`;
+}
+
+
+function isToday(dateString) {
+
+    return dateString ===
+        formatDateInput(new Date());
+
+}
+
+
+function isThisMonth(dateString) {
+
+    const date = new Date(
+        `${dateString}T00:00:00`
+    );
+
+    const now = new Date();
+
+    return (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth()
+    );
+
+}
+
+
+/* =========================================================
+   15. EDIT TRANSACTION
+   ========================================================= */
+
+function setupEditModal() {
+
+    $("#closeEditModal")?.addEventListener(
+        "click",
+        () => closeModal("#editModal")
+    );
+
+
+    $("#saveEdit")?.addEventListener(
+        "click",
+        saveEditedTransaction
+    );
+
+
+    $("#deleteEdit")?.addEventListener(
+        "click",
+        deleteEditedTransaction
+    );
+
+
+    $("#editType")?.addEventListener(
+        "change",
+        updateEditCategories
+    );
+
+}
+
+
+function openEditModal(transactionId) {
+
+    const transaction =
+        appData.transactions.find(
+            item => item.id === transactionId
+        );
+
+
+    if (!transaction) return;
+
+
+    editingTransactionId = transactionId;
+
+
+    $("#editAmount").value =
+        transaction.amount;
+
+    $("#editType").value =
+        transaction.type;
+
+    $("#editDate").value =
+        transaction.date;
+
+    $("#editTime").value =
+        transaction.time;
+
+
+    updateEditCategories(
+        transaction.category
+    );
+
+    updateEditAccounts(
+        transaction.accountType,
+        transaction.accountId
+    );
+
+
+    openModal("#editModal");
+
+}
+
+
+function updateEditCategories(
+    selectedCategory = null
+) {
+
+    const type = $("#editType").value;
+
+    const categories =
+        type === "expense"
+            ? appData.expenseCategories
+            : appData.incomeCategories;
+
+
+    const select = $("#editCategory");
+
+    select.innerHTML = "";
+
+
+    categories.forEach(category => {
+
+        const option =
+            document.createElement("option");
+
+        option.value = category;
+        option.textContent = category;
+
+        select.appendChild(option);
+
+    });
+
+
+    if (selectedCategory &&
+        categories.includes(selectedCategory)) {
+
+        select.value = selectedCategory;
+
+    }
+
+}
+
+
+function updateEditAccounts(
+    accountType,
+    accountId
+) {
+
+    const select = $("#editAccount");
+
+    select.innerHTML = "";
+
+
+    const allAccounts = [
+
+        ...appData.cashAccounts.map(
+            account => ({
+                ...account,
+                accountType: "cash"
+            })
+        ),
+
+        ...appData.bankAccounts.map(
+            account => ({
+                ...account,
+                accountType: "bank"
+            })
+        )
+
+    ];
+
+
+    allAccounts.forEach(account => {
+
+        const option =
+            document.createElement("option");
+
+        option.value =
+            `${account.accountType}:${account.id}`;
+
+        option.textContent =
+            account.accountType === "cash"
+                ? `${account.name} · Cash`
+                : `${account.name} · Bank`;
+
+        select.appendChild(option);
+
+    });
+
+
+    if (accountType && accountId) {
+
+        select.value =
+            `${accountType}:${accountId}`;
+
+    }
+
+}
+
+
+function saveEditedTransaction() {
+
+    const transaction =
+        appData.transactions.find(
+            item => item.id === editingTransactionId
+        );
+
+
+    if (!transaction) return;
+
+
+    const amount =
+        Number($("#editAmount").value);
+
+
+    if (!amount || amount <= 0) {
+
+        alert("Please enter a valid amount.");
+
+        return;
+    }
+
+
+    const accountValue =
+        $("#editAccount").value;
+
+    const [accountType, accountId] =
+        accountValue.split(":");
+
+
+    transaction.amount = amount;
+
+    transaction.type =
+        $("#editType").value;
+
+    transaction.category =
+        $("#editCategory").value;
+
+    transaction.accountType =
+        accountType;
+
+    transaction.accountId =
+        accountId;
+
+    transaction.date =
+        $("#editDate").value;
+
+    transaction.time =
+        $("#editTime").value;
+
+
+    saveData();
+
+    closeModal("#editModal");
+
+    editingTransactionId = null;
+
+    refreshApp();
+
+}
+
+
+function deleteEditedTransaction() {
+
+    if (!editingTransactionId) return;
+
+
+    const confirmed =
+        confirm(
+            "Delete this transaction?"
+        );
+
+
+    if (!confirmed) return;
+
+
+    appData.transactions =
+        appData.transactions.filter(
+            transaction =>
+                transaction.id !==
+                editingTransactionId
+        );
+
+
+    saveData();
+
+    closeModal("#editModal");
+
+    editingTransactionId = null;
+
+    refreshApp();
+
+}
+
+
+/* =========================================================
+   16. RENDER TODAY'S TRANSACTIONS
+   ========================================================= */
+
+function renderTodayTransactions() {
+
+    const list =
+        $("#todayTransactionList");
+
+
+    const transactions =
+        getSortedTransactions()
+            .filter(transaction =>
+                isToday(transaction.date)
+            );
+
+
+    $("#todayTransactionCount").textContent =
+        `${transactions.length} ${
+            transactions.length === 1
+                ? "transaction"
+                : "transactions"
+        }`;
+
+
+    if (!transactions.length) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i data-lucide="receipt"></i>
+                </div>
+
+                <h3>No transactions yet</h3>
+
+                <p>
+                    Your transactions will appear here.
+                </p>
+            </div>
+        `;
+
+        initializeIcons();
+
+        return;
+    }
+
+
+    list.innerHTML = "";
+
+
+    transactions.forEach(transaction => {
+
+        list.appendChild(
+            createTransactionElement(transaction)
+        );
+
+    });
+
+
+    initializeIcons();
+
+}
+
+
+/* =========================================================
+   17. RENDER ALL TRANSACTIONS
+   ========================================================= */
+
+function renderAllTransactions() {
+
+    const container =
+        $("#allTransactionsList");
+
+
+    const transactions =
+        getSortedTransactions();
+
+
+    if (!transactions.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i data-lucide="receipt-text"></i>
+                </div>
+
+                <h3>No transactions</h3>
+
+                <p>
+                    Your complete transaction history
+                    will appear here.
+                </p>
+            </div>
+        `;
+
+        initializeIcons();
+
+        return;
+    }
+
+
+    container.innerHTML = "";
+
+
+    const grouped = {};
+
+
+    transactions.forEach(transaction => {
+
+        if (!grouped[transaction.date]) {
+            grouped[transaction.date] = [];
+        }
+
+        grouped[transaction.date].push(
+            transaction
+        );
+
+    });
+
+
+    Object.keys(grouped)
+        .sort()
+        .reverse()
+        .forEach(date => {
+
+            const group =
+                document.createElement("div");
+
+            group.className =
+                "transaction-group";
+
+
+            const dateTitle =
+                document.createElement("div");
+
+            dateTitle.className =
+                "transaction-date";
+
+            dateTitle.textContent =
+                formatDisplayDate(date);
+
+
+            group.appendChild(dateTitle);
+
+
+            grouped[date].forEach(transaction => {
+
+                group.appendChild(
+                    createTransactionElement(
+                        transaction
+                    )
+                );
+
+            });
+
+
+            container.appendChild(group);
+
+        });
+
+
+    initializeIcons();
+
+}
+
+
+/* =========================================================
+   18. CREATE TRANSACTION ELEMENT
+   ========================================================= */
+
+function createTransactionElement(
+    transaction
+) {
+
+    const button =
+        document.createElement("button");
+
+    button.type = "button";
+
+    button.className =
+        "transaction-item";
+
+
+    const accountName =
+        getAccountName(
+            transaction.accountType,
+            transaction.accountId
+        );
+
+
+    const typeIcon =
+        transaction.type === "expense"
+            ? "arrow-down-left"
+            : "arrow-up-right";
+
+
+    const sign =
+        transaction.type === "expense"
+            ? "−"
+            : "+";
+
+
+    button.innerHTML = `
+
+        <span
+            class="transaction-icon ${transaction.type}"
+        >
+            <i data-lucide="${typeIcon}"></i>
+        </span>
+
+
+        <span class="transaction-info">
+
+            <span class="transaction-category">
+                ${escapeHTML(transaction.category)}
+            </span>
+
+            <span class="transaction-meta">
+                ${escapeHTML(accountName)}
+                ·
+                ${formatDisplayTime(transaction.time)}
+            </span>
+
+        </span>
+
+
+        <span
+            class="transaction-amount ${transaction.type}"
+        >
+            ${sign}₹${formatNumber(transaction.amount)}
+        </span>
+
+    `;
+
+
+    button.addEventListener(
+        "click",
+        () => openEditModal(transaction.id)
+    );
+
+
+    return button;
+
+}
+
+
+/* =========================================================
+   19. SORT TRANSACTIONS
+   ========================================================= */
+
+function getSortedTransactions() {
+
+    return [...appData.transactions]
+        .sort((a, b) => {
+
+            const dateA =
+                new Date(`${a.date}T${a.time || "00:00"}`);
+
+            const dateB =
+                new Date(`${b.date}T${b.time || "00:00"}`);
+
+            return dateB - dateA;
+
+        });
+
+}
+
+
+/* =========================================================
+   20. DASHBOARD TOTALS
+   ========================================================= */
+
+function calculateTotals(
+    transactions
+) {
+
+    let expenses = 0;
+    let income = 0;
+
+
+    transactions.forEach(transaction => {
+
+        const account =
+            getAccountById(
+                transaction.accountType,
+                transaction.accountId
+            );
+
+
+        if (
+            account &&
+            account.countInStatistics === false
+        ) {
+            return;
+        }
+
+
+        if (transaction.type === "expense") {
+
+            expenses +=
+                Number(transaction.amount);
+
+        } else {
+
+            income +=
+                Number(transaction.amount);
+
+        }
+
+    });
+
+
+    return {
+        expenses,
+        income,
+        net: income - expenses
+    };
+
+}
+
+
+function updateDashboardTotals() {
+
+    const todayTransactions =
+        appData.transactions.filter(
+            transaction =>
+                isToday(transaction.date)
+        );
+
+
+    const monthTransactions =
+        appData.transactions.filter(
+            transaction =>
+                isThisMonth(transaction.date)
+        );
+
+
+    const today =
+        calculateTotals(todayTransactions);
+
+    const month =
+        calculateTotals(monthTransactions);
+
+
+    $("#todayExpenses").textContent =
+        formatCurrency(today.expenses);
+
+    $("#todayIncome").textContent =
+        formatCurrency(today.income);
+
+    $("#todayNet").textContent =
+        formatCurrency(today.net);
+
+
+    $("#monthExpenses").textContent =
+        formatCurrency(month.expenses);
+
+    $("#monthIncome").textContent =
+        formatCurrency(month.income);
+
+    $("#monthNet").textContent =
+        formatCurrency(month.net);
+
+
+    updateNetColor(
+        $("#todayNet"),
+        today.net
+    );
+
+    updateNetColor(
+        $("#monthNet"),
+        month.net
+    );
+
+}
+
+
+function updateNetColor(element, value) {
+
+    if (!element) return;
+
+    element.style.color =
+        value < 0
+            ? "#d92d20"
+            : "#18864b";
+
+}
+
+
+/* =========================================================
+   21. STATISTICS
+   ========================================================= */
+
+function updateStatistics() {
+
+    const monthTransactions =
+        appData.transactions.filter(
+            transaction =>
+                isThisMonth(transaction.date)
+        );
+
+
+    const month =
+        calculateTotals(monthTransactions);
+
+
+    $("#statExpenses").textContent =
+        formatCurrency(month.expenses);
+
+    $("#statIncome").textContent =
+        formatCurrency(month.income);
+
+    $("#statNet").textContent =
+        formatCurrency(month.net);
+
+
+    const daysInMonth =
+        new Date(
+            new Date().getFullYear(),
+            new Date().getMonth() + 1,
+            0
+        ).getDate();
+
+
+    const today =
+        new Date().getDate();
+
+
+    const daysElapsed =
+        Math.max(today, 1);
+
+
+    $("#averageExpense").textContent =
+        formatCurrency(
+            month.expenses / daysElapsed
+        );
+
+
+    $("#averageIncome").textContent =
+        formatCurrency(
+            month.income / daysElapsed
+        );
+
+
+    const countedTransactions =
+        appData.transactions.filter(
+            transaction => {
+
+                const account =
+                    getAccountById(
+                        transaction.accountType,
+                        transaction.accountId
+                    );
+
+                return (
+                    !account ||
+                    account.countInStatistics !== false
+                );
+
+            }
+        );
+
+
+    const transactionTotal =
+        countedTransactions.reduce(
+            (sum, transaction) =>
+                sum + Number(transaction.amount),
+            0
+        );
+
+
+    $("#averageTransaction").textContent =
+        countedTransactions.length
+            ? formatCurrency(
+                transactionTotal /
+                countedTransactions.length
+            )
+            : "₹0";
+
+
+    $("#transactionCount").textContent =
+        countedTransactions.length;
+
+
+    updateHighestExpense(monthTransactions);
+
+    updateSavingsRate(month);
+
+    renderCategoryRanking(monthTransactions);
+
+}
+
+
+function updateHighestExpense(transactions) {
+
+    const expenses =
+        transactions.filter(
+            transaction =>
+                transaction.type === "expense"
+        );
+
+
+    if (!expenses.length) {
+
+        $("#highestExpense").textContent =
+            "₹0";
+
+        $("#highestExpenseCategory").textContent =
+            "No data";
+
+        return;
+    }
+
+
+    const highest =
+        expenses.reduce(
+            (max, transaction) =>
+                Number(transaction.amount) >
+                Number(max.amount)
+                    ? transaction
+                    : max
+        );
+
+
+    $("#highestExpense").textContent =
+        formatCurrency(
+            Number(highest.amount)
+        );
+
+    $("#highestExpenseCategory").textContent =
+        highest.category;
+
+}
+
+
+function updateSavingsRate(totals) {
+
+    if (totals.income <= 0) {
+
+        $("#savingsRate").textContent =
+            "0%";
+
+        return;
+    }
+
+
+    const rate =
+        (
+            totals.net /
+            totals.income
+        ) * 100;
+
+
+    $("#savingsRate").textContent =
+        `${Math.round(rate)}%`;
+
+}
+
+
+/* =========================================================
+   22. CATEGORY RANKING
+   ========================================================= */
+
+function renderCategoryRanking(transactions) {
+
+    const container =
+        $("#categoryRanking");
+
+
+    const expenses =
+        transactions.filter(
+            transaction =>
+                transaction.type === "expense"
+        );
+
+
+    if (!expenses.length) {
+
+        container.innerHTML = `
+            <div class="empty-state compact">
+                <p>No expense data yet.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+
+    const totals = {};
+
+
+    expenses.forEach(transaction => {
+
+        if (!totals[transaction.category]) {
+            totals[transaction.category] = 0;
+        }
+
+        totals[transaction.category] +=
+            Number(transaction.amount);
+
+    });
+
+
+    const sorted =
+        Object.entries(totals)
+            .sort(
+                (a, b) => b[1] - a[1]
+            );
+
+
+    const max =
+        sorted[0][1];
+
+
+    const total =
+        sorted.reduce(
+            (sum, [, amount]) =>
+                sum + amount,
+            0
+        );
+
+
+    container.innerHTML = "";
+
+
+    sorted.forEach(
+        ([category, amount]) => {
+
+            const percentage =
+                (amount / max) * 100;
+
+
+            const share =
+                total > 0
+                    ? Math.round(
+                        (amount / total) * 100
+                    )
+                    : 0;
+
+
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "category-rank-item";
+
+
+            item.innerHTML = `
+
+                <div class="category-rank-top">
+
+                    <span
+                        class="category-rank-name"
+                    >
+                        ${escapeHTML(category)}
+                        · ${share}%
+                    </span>
+
+                    <span
+                        class="category-rank-value"
+                    >
+                        ${formatCurrency(amount)}
+                    </span>
+
+                </div>
+
+
+                <div class="category-rank-bar">
+
+                    <div
+                        class="category-rank-bar-fill"
+                        style="width:${percentage}%"
+                    ></div>
+
+                </div>
+
+            `;
+
+
+            container.appendChild(item);
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   23. SETTINGS
+   ========================================================= */
+
+function setupSettings() {
+
+    $("#settingsButton")?.addEventListener(
+        "click",
+        () => openModal("#settingsModal")
+    );
+
+
+    $("#closeSettingsModal")?.addEventListener(
+        "click",
+        () => closeModal("#settingsModal")
+    );
+
+
+    $("#settingsModal")?.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target ===
+                $("#settingsModal")
+            ) {
+
+                closeModal("#settingsModal");
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   24. CATEGORY MANAGEMENT
+   ========================================================= */
+
+function setupCategoryManagement() {
+
+    $("#expenseCategoriesButton")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                managementMode = "expense";
+
+                openCategoryManagement();
+
+            }
+        );
+
+
+    $("#incomeCategoriesButton")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                managementMode = "income";
+
+                openCategoryManagement();
+
+            }
+        );
+
+
+    $("#closeManageCategories")
+        ?.addEventListener(
+            "click",
+            () => closeModal(
+                "#manageCategoriesModal"
+            )
+        );
+
+
+    $("#addCategoryButton")
+        ?.addEventListener(
+            "click",
+            addCategory
+        );
+
+
+    $("#newCategoryInput")
+        ?.addEventListener(
+            "keydown",
+            event => {
+
+                if (event.key === "Enter") {
+                    addCategory();
+                }
+
+            }
+        );
+
+}
+
+
+function openCategoryManagement() {
+
+    closeModal("#settingsModal");
+
+
+    const isExpense =
+        managementMode === "expense";
+
+
+    $("#managementType").textContent =
+        isExpense
+            ? "EXPENSE"
+            : "INCOME";
+
+
+    $("#managementTitle").textContent =
+        isExpense
+            ? "Expense categories"
+            : "Income categories";
+
+
+    renderCategoryManagement();
+
+
+    openModal(
+        "#manageCategoriesModal"
+    );
+
+}
+
+
+function renderCategoryManagement() {
+
+    const container =
+        $("#managementCategoryList");
+
+
+    const categories =
+        managementMode === "expense"
+            ? appData.expenseCategories
+            : appData.incomeCategories;
+
+
+    container.innerHTML = "";
+
+
+    categories.forEach(
+        (category, index) => {
+
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "management-item";
+
+
+            item.innerHTML = `
+
+                <div
+                    class="management-item-main"
+                >
+
+                    <span
+                        class="management-item-name"
+                    >
+                        ${escapeHTML(category)}
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="management-item-actions"
+                >
+
+                    <button
+                        class="small-icon-button"
+                        type="button"
+                        title="Rename"
+                        data-action="rename"
+                        data-index="${index}"
+                    >
+                        <i data-lucide="pencil"></i>
+                    </button>
+
+
+                    <button
+                        class="small-icon-button delete"
+                        type="button"
+                        title="Delete"
+                        data-action="delete"
+                        data-index="${index}"
+                    >
+                        <i data-lucide="trash-2"></i>
+                    </button>
+
+                </div>
+
+            `;
+
+
+            item
+                .querySelector(
+                    '[data-action="rename"]'
+                )
+                .addEventListener(
+                    "click",
+                    () => renameCategory(index)
+                );
+
+
+            item
+                .querySelector(
+                    '[data-action="delete"]'
+                )
+                .addEventListener(
+                    "click",
+                    () => deleteCategory(index)
+                );
+
+
+            container.appendChild(item);
+
+        }
+    );
+
+
+    initializeIcons();
+
+}
+
+
+function addCategory() {
+
+    const input =
+        $("#newCategoryInput");
+
+
+    const name =
+        input.value.trim();
+
+
+    if (!name) {
+
+        input.focus();
+
+        return;
+    }
+
+
+    const categories =
+        managementMode === "expense"
+            ? appData.expenseCategories
+            : appData.incomeCategories;
+
+
+    const exists =
+        categories.some(
+            category =>
+                category.toLowerCase() ===
+                name.toLowerCase()
+        );
+
+
+    if (exists) {
+
+        alert("This category already exists.");
+
+        return;
+    }
+
+
+    categories.push(name);
+
+    saveData();
+
+    input.value = "";
+
+    renderCategoryManagement();
+
+    refreshApp();
+
+}
+
+
+function renameCategory(index) {
+
+    const categories =
+        managementMode === "expense"
+            ? appData.expenseCategories
+            : appData.incomeCategories;
+
+
+    const oldName =
+        categories[index];
+
+
+    const newName =
+        prompt(
+            "Rename category:",
+            oldName
+        );
+
+
+    if (!newName) return;
+
+
+    const trimmed =
+        newName.trim();
+
+
+    if (!trimmed) return;
+
+
+    categories[index] =
+        trimmed;
+
+
+    appData.transactions.forEach(
+        transaction => {
+
+            const matchingType =
+                managementMode === "expense"
+                    ? transaction.type === "expense"
+                    : transaction.type === "income";
+
+
+            if (
+                matchingType &&
+                transaction.category === oldName
+            ) {
+
+                transaction.category =
+                    trimmed;
+
+            }
+
+        }
+    );
+
+
+    saveData();
+
+    renderCategoryManagement();
+
+    refreshApp();
+
+}
+
+
+function deleteCategory(index) {
+
+    const categories =
+        managementMode === "expense"
+            ? appData.expenseCategories
+            : appData.incomeCategories;
+
+
+    if (categories.length <= 1) {
+
+        alert(
+            "You need at least one category."
+        );
+
+        return;
+    }
+
+
+    const category =
+        categories[index];
+
+
+    const used =
+        appData.transactions.some(
+            transaction =>
+                transaction.category ===
+                category
+        );
+
+
+    if (used) {
+
+        alert(
+            "This category is already used by a transaction. Rename it instead of deleting it."
+        );
+
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            `Delete "${category}"?`
+        );
+
+
+    if (!confirmed) return;
+
+
+    categories.splice(index, 1);
+
+    saveData();
+
+    renderCategoryManagement();
+
+    refreshApp();
+
+}
+
+
+/* =========================================================
+   25. ACCOUNT MANAGEMENT
+   ========================================================= */
+
+function setupAccountManagement() {
+
+    $("#cashAccountsButton")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                managementMode = "cash";
+
+                openAccountManagement();
+
+            }
+        );
+
+
+    $("#bankAccountsButton")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                managementMode = "bank";
+
+                openAccountManagement();
+
+            }
+        );
+
+
+    $("#closeManageAccounts")
+        ?.addEventListener(
+            "click",
+            () => closeModal(
+                "#manageAccountsModal"
+            )
+        );
+
+
+    $("#addAccountButton")
+        ?.addEventListener(
+            "click",
+            addAccount
+        );
+
+
+    $("#newAccountInput")
+        ?.addEventListener(
+            "keydown",
+            event => {
+
+                if (event.key === "Enter") {
+                    addAccount();
+                }
+
+            }
+        );
+
+}
+
+
+function openAccountManagement() {
+
+    closeModal("#settingsModal");
+
+
+    const isCash =
+        managementMode === "cash";
+
+
+    $("#accountManagementType").textContent =
+        isCash
+            ? "CASH"
+            : "BANK";
+
+
+    $("#accountManagementTitle").textContent =
+        isCash
+            ? "Cash accounts"
+            : "Bank accounts";
+
+
+    renderAccountManagement();
+
+
+    openModal(
+        "#manageAccountsModal"
+    );
+
+}
+
+
+function renderAccountManagement() {
+
+    const container =
+        $("#managementAccountList");
+
+
+    const accounts =
+        getAccounts(managementMode);
+
+
+    container.innerHTML = "";
+
+
+    accounts.forEach(
+        (account, index) => {
+
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "management-item";
+
+
+            item.innerHTML = `
+
+                <div
+                    class="management-item-main"
+                >
+
+                    <span
+                        class="management-item-name"
+                    >
+                        ${escapeHTML(account.name)}
+                    </span>
+
+                    <span
+                        class="management-item-subtitle"
+                    >
+                        ${
+                            account.primary
+                                ? "Primary account"
+                                : "Tap star to make primary"
+                        }
+
+                        ·
+
+                        ${
+                            account.countInStatistics !== false
+                                ? "Included in statistics"
+                                : "Excluded from statistics"
+                        }
+
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="management-item-actions"
+                >
+
+                    <button
+                        class="small-icon-button"
+                        type="button"
+                        title="Set primary"
+                        data-action="primary"
+                        data-index="${index}"
+                    >
+                        <i
+                            data-lucide="${
+                                account.primary
+                                    ? "star"
+                                    : "star"
+                            }"
+                        ></i>
+                    </button>
+
+
+                    <button
+                        class="small-icon-button"
+                        type="button"
+                        title="Statistics"
+                        data-action="statistics"
+                        data-index="${index}"
+                    >
+                        <i
+                            data-lucide="${
+                                account.countInStatistics !== false
+                                    ? "eye"
+                                    : "eye-off"
+                            }"
+                        ></i>
+                    </button>
+
+
+                    <button
+                        class="small-icon-button"
+                        type="button"
+                        title="Rename"
+                        data-action="rename"
+                        data-index="${index}"
+                    >
+                        <i data-lucide="pencil"></i>
+                    </button>
+
+
+                    <button
+                        class="small-icon-button delete"
+                        type="button"
+                        title="Delete"
+                        data-action="delete"
+                        data-index="${index}"
+                    >
+                        <i data-lucide="trash-2"></i>
+                    </button>
+
+                </div>
+
+            `;
+
+
+            item
+                .querySelector(
+                    '[data-action="primary"]'
+                )
+                .addEventListener(
+                    "click",
+                    () =>
+                        setPrimaryAccount(index)
+                );
+
+
+            item
+                .querySelector(
+                    '[data-action="statistics"]'
+                )
+                .addEventListener(
+                    "click",
+                    () =>
+                        toggleAccountStatistics(index)
+                );
+
+
+            item
+                .querySelector(
+                    '[data-action="rename"]'
+                )
+                .addEventListener(
+                    "click",
+                    () =>
+                        renameAccount(index)
+                );
+
+
+            item
+                .querySelector(
+                    '[data-action="delete"]'
+                )
+                .addEventListener(
+                    "click",
+                    () =>
+                        deleteAccount(index)
+                );
+
+
+            container.appendChild(item);
+
+        }
+    );
+
+
+    initializeIcons();
+
+}
+
+
+function addAccount() {
+
+    const input =
+        $("#newAccountInput");
+
+
+    const name =
+        input.value.trim();
+
+
+    if (!name) {
+
+        input.focus();
+
+        return;
+    }
+
+
+    const accounts =
+        getAccounts(managementMode);
+
+
+    const exists =
+        accounts.some(
+            account =>
+                account.name.toLowerCase() ===
+                name.toLowerCase()
+        );
+
+
+    if (exists) {
+
+        alert("This account already exists.");
+
+        return;
+    }
+
+
+    accounts.push({
+
+        id:
+            crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random()}`,
+
+        name,
+
+        primary:
+            accounts.length === 0,
+
+        countInStatistics: true
+
+    });
+
+
+    saveData();
+
+    input.value = "";
+
+    renderAccountManagement();
+
+    refreshApp();
+
+}
+
+
+function setPrimaryAccount(index) {
+
+    const accounts =
+        getAccounts(managementMode);
+
+
+    accounts.forEach(
+        (account, accountIndex) => {
+
+            account.primary =
+                accountIndex === index;
+
+        }
+    );
+
+
+    saveData();
+
+    renderAccountManagement();
+
+    refreshApp();
+
+}
+
+
+function toggleAccountStatistics(index) {
+
+    const accounts =
+        getAccounts(managementMode);
+
+
+    accounts[index].countInStatistics =
+        accounts[index].countInStatistics === false;
+
+
+    saveData();
+
+    renderAccountManagement();
+
+    refreshApp();
+
+}
+
+
+function renameAccount(index) {
+
+    const accounts =
+        getAccounts(managementMode);
+
+
+    const account =
+        accounts[index];
+
+
+    const oldName =
+        account.name;
+
+
+    const newName =
+        prompt(
+            "Rename account:",
+            oldName
+        );
+
+
+    if (!newName) return;
+
+
+    const trimmed =
+        newName.trim();
+
+
+    if (!trimmed) return;
+
+
+    const exists =
+        accounts.some(
+            (item, itemIndex) =>
+                itemIndex !== index &&
+                item.name.toLowerCase() ===
+                trimmed.toLowerCase()
+        );
+
+
+    if (exists) {
+
+        alert("This account already exists.");
+
+        return;
+    }
+
+
+    account.name =
+        trimmed;
+
+
+    saveData();
+
+    renderAccountManagement();
+
+    refreshApp();
+
+}
+
+
+function deleteAccount(index) {
+
+    const accounts =
+        getAccounts(managementMode);
+
+
+    if (accounts.length <= 1) {
+
+        alert(
+            "You need at least one account."
+        );
+
+        return;
+    }
+
+
+    const account =
+        accounts[index];
+
+
+    const used =
+        appData.transactions.some(
+            transaction =>
+                transaction.accountId ===
+                    account.id &&
+                transaction.accountType ===
+                    managementMode
+        );
+
+
+    if (used) {
+
+        alert(
+            "This account is already used by a transaction. Rename it instead of deleting it."
+        );
+
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            `Delete "${account.name}"?`
+        );
+
+
+    if (!confirmed) return;
+
+
+    accounts.splice(index, 1);
+
+
+    if (
+        account.primary &&
+        accounts.length > 0
+    ) {
+
+        accounts[0].primary = true;
+
+    }
+
+
+    saveData();
+
+    renderAccountManagement();
+
+    refreshApp();
+
+}
+
+
+/* =========================================================
+   26. DATA EXPORT / IMPORT
+   ========================================================= */
+
+function setupDataManagement() {
+
+    $("#exportJsonButton")
+        ?.addEventListener(
+            "click",
+            exportJSON
+        );
+
+
+    $("#importJsonButton")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                $("#jsonFileInput").click();
+
+            }
+        );
+
+
+    $("#jsonFileInput")
+        ?.addEventListener(
+            "change",
+            importJSON
+        );
+
+
+    $("#exportPdfButton")
+        ?.addEventListener(
+            "click",
+            exportPDF
+        );
+
+}
+
+
+function exportJSON() {
+
+    const data =
+        JSON.stringify(
+            appData,
+            null,
+            2
+        );
+
+
+    const blob =
+        new Blob(
+            [data],
+            {
+                type: "application/json"
+            }
+        );
+
+
+    downloadBlob(
+        blob,
+        `trackit-backup-${formatDateInput(new Date())}.json`
+    );
+
+}
+
+
+function importJSON(event) {
+
+    const file =
+        event.target.files[0];
+
+
+    if (!file) return;
+
+
+    const reader =
+        new FileReader();
+
+
+    reader.onload = () => {
+
+        try {
+
+            const imported =
+                JSON.parse(
+                    reader.result
+                );
+
+
+            if (
+                !imported ||
+                !Array.isArray(
+                    imported.transactions
+                )
+            ) {
+
+                throw new Error(
+                    "Invalid TrackIt backup."
+                );
+
+            }
+
+
+            const confirmed =
+                confirm(
+                    "Importing this backup will replace your current TrackIt data. Continue?"
+                );
+
+
+            if (!confirmed) return;
+
+
+            appData = {
+
+                ...structuredClone(
+                    DEFAULT_DATA
+                ),
+
+                ...imported
+
+            };
+
+
+            saveData();
+
+            refreshApp();
+
+
+            alert(
+                "TrackIt data imported successfully."
+            );
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "This file is not a valid TrackIt JSON backup."
+            );
+
+        }
+
+    };
+
+
+    reader.readAsText(file);
+
+
+    event.target.value = "";
+
+}
+
+
+/* =========================================================
+   27. PDF EXPORT
+   ========================================================= */
+
+function exportPDF() {
+
+    /*
+       This creates a print-friendly statement.
+
+       Browser print dialog allows:
+       Save as PDF
+    */
+
+
+    const monthTransactions =
+        appData.transactions.filter(
+            transaction =>
+                isThisMonth(transaction.date)
+        );
+
+
+    const totals =
+        calculateTotals(
+            monthTransactions
+        );
+
+
+    const rows =
+        getSortedTransactions()
+            .map(transaction => {
+
+                const account =
+                    getAccountName(
+                        transaction.accountType,
+                        transaction.accountId
+                    );
+
+
+                return `
+                    <tr>
+                        <td>
+                            ${formatDisplayDate(transaction.date)}
+                        </td>
+
+                        <td>
+                            ${escapeHTML(transaction.category)}
+                        </td>
+
+                        <td>
+                            ${escapeHTML(account)}
+                        </td>
+
+                        <td>
+                            ${transaction.type === "income"
+                                ? "Income"
+                                : "Expense"}
+                        </td>
+
+                        <td>
+                            ₹${formatNumber(transaction.amount)}
+                        </td>
+                    </tr>
+                `;
+
+            })
+            .join("");
+
+
+    const averageExpense =
+        monthTransactions.length
+            ? totals.expenses /
+              Math.max(
+                  new Date().getDate(),
+                  1
+              )
+            : 0;
+
+
+    const averageIncome =
+        monthTransactions.length
+            ? totals.income /
+              Math.max(
+                  new Date().getDate(),
+                  1
+              )
+            : 0;
+
+
+    const pdfWindow =
+        window.open(
+            "",
+            "_blank"
+        );
+
+
+    if (!pdfWindow) {
+
+        alert(
+            "Please allow pop-ups to export the statement."
+        );
+
+        return;
+    }
+
+
+    pdfWindow.document.write(`
+
+        <!DOCTYPE html>
+
+        <html>
+
+        <head>
+
+            <title>TrackIt Statement</title>
+
+            <style>
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    margin: 0;
+                    padding: 40px;
+
+                    color: #1d1d1f;
+
+                    font-family:
+                        -apple-system,
+                        BlinkMacSystemFont,
+                        "Segoe UI",
+                        sans-serif;
+                }
+
+                h1 {
+                    margin: 0 0 5px;
+
+                    font-size: 28px;
+                }
+
+                .subtitle {
+                    color: #777;
+
+                    font-size: 12px;
+                }
+
+                .summary {
+                    display: grid;
+
+                    grid-template-columns:
+                        repeat(3, 1fr);
+
+                    gap: 12px;
+
+                    margin: 30px 0;
+                }
+
+                .summary-card {
+                    padding: 18px;
+
+                    border: 1px solid #ddd;
+
+                    border-radius: 12px;
+                }
+
+                .summary-card span {
+                    display: block;
+
+                    color: #777;
+
+                    font-size: 11px;
+                }
+
+                .summary-card strong {
+                    display: block;
+
+                    margin-top: 8px;
+
+                    font-size: 20px;
+                }
+
+                h2 {
+                    margin-top: 35px;
+
+                    font-size: 18px;
+                }
+
+                .averages {
+                    display: grid;
+
+                    grid-template-columns:
+                        repeat(2, 1fr);
+
+                    gap: 12px;
+                }
+
+                .average {
+                    padding: 15px;
+
+                    border: 1px solid #ddd;
+
+                    border-radius: 12px;
+                }
+
+                .average span {
+                    display: block;
+
+                    color: #777;
+
+                    font-size: 11px;
+                }
+
+                .average strong {
+                    display: block;
+
+                    margin-top: 5px;
+
+                    font-size: 16px;
+                }
+
+                table {
+                    width: 100%;
+
+                    margin-top: 15px;
+
+                    border-collapse: collapse;
+
+                    font-size: 11px;
+                }
+
+                th,
+                td {
+                    padding: 9px;
+
+                    border-bottom:
+                        1px solid #ddd;
+
+                    text-align: left;
+                }
+
+                th {
+                    background: #f5f5f7;
+                }
+
+                @media print {
+
+                    body {
+                        padding: 20px;
+                    }
+
+                }
+
+            </style>
+
+        </head>
+
+
+        <body>
+
+            <h1>TrackIt</h1>
+
+            <div class="subtitle">
+                Personal finance statement
+                · Generated ${formatDisplayDate(
+                    formatDateInput(new Date())
+                )}
+            </div>
+
+
+            <div class="summary">
+
+                <div class="summary-card">
+                    <span>Expenses</span>
+                    <strong>
+                        ₹${formatNumber(totals.expenses)}
+                    </strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>Income</span>
+                    <strong>
+                        ₹${formatNumber(totals.income)}
+                    </strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>Net</span>
+                    <strong>
+                        ₹${formatNumber(totals.net)}
+                    </strong>
+                </div>
+
+            </div>
+
+
+            <h2>Daily averages</h2>
+
+            <div class="averages">
+
+                <div class="average">
+
+                    <span>
+                        Average daily expense
+                    </span>
+
+                    <strong>
+                        ₹${formatNumber(averageExpense)}
+                    </strong>
+
+                </div>
+
+
+                <div class="average">
+
+                    <span>
+                        Average daily income
+                    </span>
+
+                    <strong>
+                        ₹${formatNumber(averageIncome)}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <h2>Transactions</h2>
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Account</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    ${rows}
+
+                </tbody>
+
+            </table>
+
+
+            <script>
+
+                window.onload = function() {
+
+                    window.print();
+
+                };
+
+            <\/script>
+
+        </body>
+
+        </html>
+
+    `);
+
+
+    pdfWindow.document.close();
+
+}
+
+
+/* =========================================================
+   28. GENERAL MODAL FUNCTIONS
+   ========================================================= */
+
+function openModal(selector) {
+
+    const modal =
+        $(selector);
+
+
+    if (!modal) return;
+
+
+    modal.classList.add("active");
+
+    modal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+
+    document.body.style.overflow =
+        "hidden";
+
+}
+
+
+function closeModal(selector) {
+
+    const modal =
+        $(selector);
+
+
+    if (!modal) return;
+
+
+    modal.classList.remove("active");
+
+    modal.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    if (
+        !document.querySelector(
+            ".modal-overlay.active"
+        )
+    ) {
+
+        document.body.style.overflow =
+            "";
+
+    }
+
+}
+
+
+/* =========================================================
+   29. FORMATTERS
+   ========================================================= */
+
+function formatNumber(value) {
+
+    return new Intl.NumberFormat(
+        "en-IN",
+        {
+            maximumFractionDigits: 2
+        }
+    ).format(
+        Number(value) || 0
+    );
+
+}
+
+
+function formatCurrency(value) {
+
+    return `₹${formatNumber(value)}`;
+
+}
+
+
+function formatDisplayDate(dateString) {
+
+    const date =
+        new Date(
+            `${dateString}T00:00:00`
+        );
+
+
+    const today =
+        new Date();
+
+
+    const yesterday =
+        new Date();
+
+
+    yesterday.setDate(
+        yesterday.getDate() - 1
+    );
+
+
+    if (
+        dateString ===
+        formatDateInput(today)
+    ) {
+
+        return "Today";
+
+    }
+
+
+    if (
+        dateString ===
+        formatDateInput(yesterday)
+    ) {
+
+        return "Yesterday";
+
+    }
+
+
+    return date.toLocaleDateString(
+        "en-IN",
+        {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+        }
+    );
+
+}
+
+
+function formatDisplayTime(time) {
+
+    if (!time) return "";
+
+    const [hours, minutes] =
+        time.split(":");
+
+
+    const date =
+        new Date();
+
+
+    date.setHours(
+        Number(hours),
+        Number(minutes)
+    );
+
+
+    return date.toLocaleTimeString(
+        "en-IN",
+        {
+            hour: "numeric",
+            minute: "2-digit"
+        }
+    );
+
+}
+
+
+/* =========================================================
+   30. CATEGORY ICONS
+   ========================================================= */
+
+function getCategoryIcon(category) {
+
+    const name =
+        category.toLowerCase();
+
+
+    if (
+        name.includes("food") ||
+        name.includes("meal") ||
+        name.includes("restaurant")
+    ) {
+        return "utensils";
+    }
+
+
+    if (
+        name.includes("transport") ||
+        name.includes("travel") ||
+        name.includes("fuel")
+    ) {
+        return "car-front";
+    }
+
+
+    if (
+        name.includes("shopping") ||
+        name.includes("shop")
+    ) {
+        return "shopping-bag";
+    }
+
+
+    if (
+        name.includes("bill") ||
+        name.includes("electric")
+    ) {
+        return "receipt";
+    }
+
+
+    if (
+        name.includes("education") ||
+        name.includes("school") ||
+        name.includes("course")
+    ) {
+        return "book-open";
+    }
+
+
+    if (
+        name.includes("entertainment") ||
+        name.includes("movie")
+    ) {
+        return "film";
+    }
+
+
+    if (
+        name.includes("health") ||
+        name.includes("medical")
+    ) {
+        return "heart-pulse";
+    }
+
+
+    if (
+        name.includes("salary")
+    ) {
+        return "briefcase-business";
+    }
+
+
+    if (
+        name.includes("freelance") ||
+        name.includes("business")
+    ) {
+        return "laptop";
+    }
+
+
+    if (
+        name.includes("gift")
+    ) {
+        return "gift";
+    }
+
+
+    if (
+        name.includes("interest")
+    ) {
+        return "percent";
+    }
+
+
+    return "circle";
+}
+
+
+/* =========================================================
+   31. ESCAPE HTML
+   ========================================================= */
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+/* =========================================================
+   32. DOWNLOAD HELPER
+   ========================================================= */
+
+function downloadBlob(
+    blob,
+    filename
+) {
+
+    const url =
+        URL.createObjectURL(blob);
+
+
+    const link =
+        document.createElement("a");
+
+
+    link.href = url;
+
+    link.download = filename;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+
+    setTimeout(
+        () => URL.revokeObjectURL(url),
+        1000
+    );
+
+}
+
+
+/* =========================================================
+   33. REFRESH EVERYTHING
+   ========================================================= */
+
+function refreshApp() {
+
+    updateQuickEntryCards();
+
+    updateDashboardTotals();
+
+    renderTodayTransactions();
+
+    renderAllTransactions();
+
+    updateStatistics();
+
+    initializeIcons();
+
+}

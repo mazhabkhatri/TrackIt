@@ -3888,6 +3888,15 @@ function renderStatisticToggles() {
 
 function setupSettings() {
 
+    const headerSettingsButton = document.getElementById("headerSettingsButton");
+
+    if (headerSettingsButton && !headerSettingsButton.dataset.bound) {
+        headerSettingsButton.dataset.bound = "true";
+        headerSettingsButton.addEventListener("click", () => {
+            showPage("settingsPage");
+        });
+    }
+
     document.addEventListener(
         "change",
         event => {

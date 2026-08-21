@@ -1,2610 +1,1005 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    >
-
-    <meta
-        name="theme-color"
-        content="#f7f7f9"
-    >
-
-    <meta
-        name="description"
-        content="TrackIt — simple expense, income and money management."
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>TrackIt</title>
 
-    <link
-        rel="icon"
-        type="image/png"
-        href="favicon.png"
-    >
-
-    <link
-        rel="apple-touch-icon"
-        href="favicon.png"
-    >
-
+    <!-- Modern icon pack -->
     <link
         rel="stylesheet"
-        href="style.css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.468.0/lucide.min.css"
     >
 
-    <!-- Pre-existing professional icon library -->
-    <script
-        src="https://unpkg.com/lucide@latest"
-        defer
-    ></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 
 <body>
 
-<div id="app">
+    <div class="app">
+
+        <!-- =========================
+             HEADER
+        ========================== -->
+        <header class="top-bar">
+            <div>
+                <p class="eyebrow">PERSONAL FINANCE</p>
+                <h1>TrackIt</h1>
+            </div>
+
+            <button class="icon-button" id="settingsButton" aria-label="Settings">
+                <i data-lucide="settings"></i>
+            </button>
+        </header>
 
 
-    <!-- =========================================================
-         HEADER
-         ========================================================= -->
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+        <main class="main-content">
 
-    <header class="app-header">
-
-        <div class="header-left">
-
-            <h1 class="app-title">
-                TrackIt
-            </h1>
-
-            <p
-                class="header-date"
-                id="headerDate"
-            >
-                Today
-            </p>
-
-        </div>
-
-
-        <button
-            class="icon-button"
-            id="headerSettingsButton"
-            type="button"
-            aria-label="Settings"
-        >
-            <i data-lucide="settings"></i>
-        </button>
-
-    </header>
-
-
-
-    <!-- =========================================================
-         MAIN
-         ========================================================= -->
-
-    <main class="main-content">
-
-
-        <!-- =====================================================
-             DASHBOARD
-             ===================================================== -->
-
-        <section
-            id="dashboardPage"
-            class="page active"
-        >
-
-
-            <!-- =================================================
-                 OVERVIEW
-                 ================================================= -->
-
-            <section class="summary-section">
+            <!-- =========================
+                 DASHBOARD
+            ========================== -->
+            <section id="dashboardPage" class="page active">
 
                 <div class="section-heading">
-
-                    <h2>
-                        Overview
-                    </h2>
-
-                    <p>
-                        Your money at a glance
-                    </p>
-
-                </div>
-
-
-                <div class="summary-grid">
-
-
-                    <article class="summary-card expense-summary">
-
-                        <span class="summary-label">
-                            Today's expenses
-                        </span>
-
-                        <strong
-                            class="summary-value"
-                            id="todayExpense"
-                        >
-                            ₹0
-                        </strong>
-
-                    </article>
-
-
-                    <article class="summary-card income-summary">
-
-                        <span class="summary-label">
-                            Today's income
-                        </span>
-
-                        <strong
-                            class="summary-value"
-                            id="todayIncome"
-                        >
-                            ₹0
-                        </strong>
-
-                    </article>
-
-
-                    <article class="summary-card expense-summary">
-
-                        <span class="summary-label">
-                            This month's expenses
-                        </span>
-
-                        <strong
-                            class="summary-value"
-                            id="monthExpense"
-                        >
-                            ₹0
-                        </strong>
-
-                    </article>
-
-
-                    <article class="summary-card income-summary">
-
-                        <span class="summary-label">
-                            This month's income
-                        </span>
-
-                        <strong
-                            class="summary-value"
-                            id="monthIncome"
-                        >
-                            ₹0
-                        </strong>
-
-                    </article>
-
-                </div>
-
-
-                <div class="net-summary">
-
-                    <span>
-                        This month's net
-                    </span>
-
-                    <strong id="monthNet">
-                        ₹0
-                    </strong>
-
-                </div>
-
-
-                <div class="net-summary today-net-summary">
-
-                    <span>
-                        Today's net
-                    </span>
-
-                    <strong id="todayNet">
-                        ₹0
-                    </strong>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 FIRST ACCOUNT REQUIREMENT
-                 ================================================= -->
-
-            <section
-                class="setup-required-card"
-                id="accountSetupNotice"
-            >
-
-                <div class="setup-required-icon">
-                    <i data-lucide="wallet-cards"></i>
-                </div>
-
-                <div class="setup-required-content">
-
-                    <h2>
-                        Set up your accounts
-                    </h2>
-
-                    <p>
-                        Add at least one cash account and one bank
-                        account before adding transactions.
-                    </p>
-
-                </div>
-
-                <button
-                    type="button"
-                    class="primary-action"
-                    id="setupAccountsButton"
-                >
-                    Set up accounts
-                </button>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 EXPENSE
-                 ================================================= -->
-
-            <section class="quick-add-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Add expense
-                    </h2>
-
-                    <p>
-                        Choose where the money is coming from
-                    </p>
-
-                </div>
-
-
-                <div class="quick-add-card expense-card">
-
-
-                    <!-- CASH -->
-
-                    <div class="quick-amount">
-
-                        <label for="expenseCashAmount">
-                            Primary Cash
-                        </label>
-
-                        <div class="amount-input-wrap">
-
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
-
-                            <input
-                                id="expenseCashAmount"
-                                class="amount-input quick-expense-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
-
-                        </div>
-
+                    <div>
+                        <h2>Quick entry</h2>
+                        <p>Tap an account to add a transaction</p>
                     </div>
-
-
-                    <!-- BANK -->
-
-                    <div class="quick-amount">
-
-                        <label for="expenseBankAmount">
-                            Primary Bank
-                        </label>
-
-                        <div class="amount-input-wrap">
-
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
-
-                            <input
-                                id="expenseBankAmount"
-                                class="amount-input quick-expense-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 INCOME
-                 ================================================= -->
-
-            <section class="quick-add-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Add income
-                    </h2>
-
-                    <p>
-                        Choose where the money is received
-                    </p>
-
                 </div>
 
 
-                <div class="quick-add-card income-card">
+                <!-- QUICK ENTRY -->
+                <div class="quick-entry-grid">
 
-
-                    <!-- CASH -->
-
-                    <div class="quick-amount">
-
-                        <label for="incomeCashAmount">
-                            Primary Cash
-                        </label>
-
-                        <div class="amount-input-wrap">
-
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
-
-                            <input
-                                id="incomeCashAmount"
-                                class="amount-input quick-income-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- BANK -->
-
-                    <div class="quick-amount">
-
-                        <label for="incomeBankAmount">
-                            Primary Bank
-                        </label>
-
-                        <div class="amount-input-wrap">
-
-                            <span class="currency-symbol">
-                                ₹
-                            </span>
-
-                            <input
-                                id="incomeBankAmount"
-                                class="amount-input quick-income-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 SHIFT OVERVIEW
-                 ================================================= -->
-
-            <section class="shift-overview-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Shift overview
-                    </h2>
-
-                    <p>
-                        Where your money is currently held
-                    </p>
-
-                </div>
-
-
-                <div class="shift-overview-grid">
-
-
-                    <article class="shift-overview-card">
-
-                        <span>
-                            Cash balance
-                        </span>
-
-                        <strong id="shiftCashBalance">
-                            ₹0
-                        </strong>
-
-                    </article>
-
-
-                    <article class="shift-overview-card">
-
-                        <span>
-                            Bank balance
-                        </span>
-
-                        <strong id="shiftBankBalance">
-                            ₹0
-                        </strong>
-
-                    </article>
-
-
-                    <article class="shift-overview-card">
-
-                        <span>
-                            Today's transfers
-                        </span>
-
-                        <strong id="shiftTodayTransfers">
-                            ₹0
-                        </strong>
-
-                    </article>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 SELF TRANSFER
-                 ================================================= -->
-
-            <section class="quick-add-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Self transfer
-                    </h2>
-
-                    <p>
-                        Transfer money between your own accounts
-                    </p>
-
-                </div>
-
-
-                <div class="quick-add-card transfer-card">
-
-
+                    <!-- EXPENSE CASH -->
                     <button
-                        type="button"
-                        class="account-selector"
-                        id="transferFromButton"
+                        class="money-card expense-card"
+                        data-type="expense"
+                        data-account-type="cash"
+                        id="expenseCashCard"
                     >
+                        <div class="money-card-top">
+                            <span class="money-card-label">Expense</span>
+                            <span class="account-icon">
+                                <i data-lucide="wallet"></i>
+                            </span>
+                        </div>
 
-                        <span class="account-selector-label">
-                            From
-                        </span>
+                        <div class="money-card-amount">
+                            <span class="currency">₹</span>
+                            <span id="expenseCashAmount">0</span>
+                        </div>
 
-                        <strong
-                            class="account-selector-value"
-                            id="transferFromValue"
-                        >
-                            Primary Cash
-                        </strong>
-
-                        <i data-lucide="chevron-right"></i>
-
+                        <div class="money-card-account">
+                            <span id="expenseCashName">Cash</span>
+                            <i data-lucide="chevron-right"></i>
+                        </div>
                     </button>
 
 
-                    <div class="transfer-arrow">
-                        <i data-lucide="arrow-down"></i>
-                    </div>
-
-
+                    <!-- EXPENSE BANK -->
                     <button
-                        type="button"
-                        class="account-selector"
-                        id="transferToButton"
+                        class="money-card expense-card"
+                        data-type="expense"
+                        data-account-type="bank"
+                        id="expenseBankCard"
                     >
+                        <div class="money-card-top">
+                            <span class="money-card-label">Expense</span>
+                            <span class="account-icon">
+                                <i data-lucide="building-2"></i>
+                            </span>
+                        </div>
 
-                        <span class="account-selector-label">
-                            To
-                        </span>
+                        <div class="money-card-amount">
+                            <span class="currency">₹</span>
+                            <span id="expenseBankAmount">0</span>
+                        </div>
 
-                        <strong
-                            class="account-selector-value"
-                            id="transferToValue"
-                        >
-                            Primary Bank
-                        </strong>
-
-                        <i data-lucide="chevron-right"></i>
-
+                        <div class="money-card-account">
+                            <span id="expenseBankName">Bank</span>
+                            <i data-lucide="chevron-right"></i>
+                        </div>
                     </button>
 
 
-                    <div class="quick-amount">
-
-                        <label for="transferAmount">
-                            Amount
-                        </label>
-
-                        <div class="amount-input-wrap">
-
-                            <span class="currency-symbol">
-                                ₹
+                    <!-- INCOME CASH -->
+                    <button
+                        class="money-card income-card"
+                        data-type="income"
+                        data-account-type="cash"
+                        id="incomeCashCard"
+                    >
+                        <div class="money-card-top">
+                            <span class="money-card-label">Income</span>
+                            <span class="account-icon">
+                                <i data-lucide="wallet"></i>
                             </span>
-
-                            <input
-                                id="transferAmount"
-                                class="amount-input"
-                                type="number"
-                                inputmode="decimal"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                autocomplete="off"
-                            >
-
                         </div>
 
-                    </div>
+                        <div class="money-card-amount">
+                            <span class="currency">₹</span>
+                            <span id="incomeCashAmount">0</span>
+                        </div>
+
+                        <div class="money-card-account">
+                            <span id="incomeCashName">Cash</span>
+                            <i data-lucide="chevron-right"></i>
+                        </div>
+                    </button>
 
 
+                    <!-- INCOME BANK -->
                     <button
-                        type="button"
-                        class="primary-action"
-                        id="transferButton"
+                        class="money-card income-card"
+                        data-type="income"
+                        data-account-type="bank"
+                        id="incomeBankCard"
                     >
-                        Transfer money
+                        <div class="money-card-top">
+                            <span class="money-card-label">Income</span>
+                            <span class="account-icon">
+                                <i data-lucide="building-2"></i>
+                            </span>
+                        </div>
+
+                        <div class="money-card-amount">
+                            <span class="currency">₹</span>
+                            <span id="incomeBankAmount">0</span>
+                        </div>
+
+                        <div class="money-card-account">
+                            <span id="incomeBankName">Bank</span>
+                            <i data-lucide="chevron-right"></i>
+                        </div>
                     </button>
 
                 </div>
 
-            </section>
 
-
-
-            <!-- =================================================
-                 TODAY TRANSACTIONS
-                 ================================================= -->
-
-            <section class="transactions-preview-section">
-
-                <div class="section-heading-row">
+                <!-- =========================
+                     TODAY
+                ========================== -->
+                <section class="summary-section">
 
                     <div class="section-heading">
+                        <div>
+                            <h2>Today</h2>
+                        </div>
+                    </div>
 
-                        <h2>
-                            Today
-                        </h2>
+                    <div class="summary-grid">
 
-                        <p>
-                            Today's transactions
-                        </p>
+                        <div class="summary-card">
+                            <span>Expenses</span>
+                            <strong id="todayExpenses">₹0</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Income</span>
+                            <strong id="todayIncome">₹0</strong>
+                        </div>
+
+                        <div class="summary-card net-card">
+                            <span>Net</span>
+                            <strong id="todayNet">₹0</strong>
+                        </div>
 
                     </div>
 
+                </section>
 
-                    <button
-                        class="text-button"
-                        id="viewAllTransactionsButton"
-                        type="button"
+
+                <!-- =========================
+                     THIS MONTH
+                ========================== -->
+                <section class="summary-section">
+
+                    <div class="section-heading">
+                        <div>
+                            <h2>This month</h2>
+                        </div>
+                    </div>
+
+                    <div class="summary-grid">
+
+                        <div class="summary-card">
+                            <span>Expenses</span>
+                            <strong id="monthExpenses">₹0</strong>
+                        </div>
+
+                        <div class="summary-card">
+                            <span>Income</span>
+                            <strong id="monthIncome">₹0</strong>
+                        </div>
+
+                        <div class="summary-card net-card">
+                            <span>Net</span>
+                            <strong id="monthNet">₹0</strong>
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =========================
+                     TODAY'S TRANSACTIONS
+                ========================== -->
+                <section class="transactions-section">
+
+                    <div class="section-heading section-heading-row">
+
+                        <div>
+                            <h2>Today's transactions</h2>
+                            <p id="todayTransactionCount">0 transactions</p>
+                        </div>
+
+                        <button class="text-button" id="viewAllButton">
+                            View all
+                        </button>
+
+                    </div>
+
+                    <div
+                        class="transaction-list"
+                        id="todayTransactionList"
                     >
-                        See all
-                    </button>
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i data-lucide="receipt"></i>
+                            </div>
 
+                            <h3>No transactions yet</h3>
+
+                            <p>
+                                Your transactions will appear here.
+                            </p>
+                        </div>
+                    </div>
+
+                </section>
+
+            </section>
+
+
+            <!-- =========================
+                 TRANSACTIONS PAGE
+            ========================== -->
+            <section id="transactionsPage" class="page">
+
+                <div class="page-title">
+                    <p class="eyebrow">HISTORY</p>
+                    <h2>Transactions</h2>
                 </div>
-
 
                 <div
-                    id="todayTransactions"
-                    class="transaction-list"
-                ></div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 INVESTMENTS
-                 ================================================= -->
-
-            <section class="dashboard-feature-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Investments
-                    </h2>
-
-                    <p>
-                        Your current investments
-                    </p>
-
-                </div>
-
-
-                <div class="feature-card">
-
-                    <div class="feature-card-top">
-
-                        <div>
-
-                            <span class="feature-label">
-                                Total investments
-                            </span>
-
-                            <strong id="dashboardInvestmentTotal">
-                                ₹0
-                            </strong>
-
-                            <span
-                                class="feature-subvalue"
-                                id="dashboardInvestmentReturn"
-                            >
-                                ₹0 return
-                            </span>
-
+                    class="all-transactions"
+                    id="allTransactionsList"
+                >
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i data-lucide="receipt-text"></i>
                         </div>
 
-                        <i data-lucide="trending-up"></i>
+                        <h3>No transactions</h3>
 
+                        <p>
+                            Your complete transaction history will appear here.
+                        </p>
                     </div>
-
-
-                    <button
-                        type="button"
-                        class="feature-action"
-                        id="editInvestmentsButton"
-                    >
-                        Edit investments
-                    </button>
-
                 </div>
 
             </section>
 
 
+            <!-- =========================
+                 STATISTICS PAGE
+            ========================== -->
+            <section id="statisticsPage" class="page">
 
-            <!-- =================================================
-                 SAVINGS
-                 ================================================= -->
-
-            <section class="dashboard-feature-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Savings
-                    </h2>
-
-                    <p>
-                        Things you're saving for
-                    </p>
-
+                <div class="page-title">
+                    <p class="eyebrow">OVERVIEW</p>
+                    <h2>Statistics</h2>
                 </div>
 
 
-                <div class="feature-card">
+                <!-- MONTH OVERVIEW -->
+                <section class="stats-section">
 
-                    <div class="feature-card-top">
-
+                    <div class="section-heading">
                         <div>
+                            <h2>This month</h2>
+                        </div>
+                    </div>
 
-                            <span class="feature-label">
-                                Total saved
-                            </span>
+                    <div class="stats-primary">
 
-                            <strong id="dashboardSavingsTotal">
-                                ₹0
-                            </strong>
-
-                            <span
-                                class="feature-subvalue"
-                                id="dashboardSavingsGoal"
-                            >
-                                Goal ₹0
-                            </span>
-
+                        <div class="stat-large">
+                            <span>Total expenses</span>
+                            <strong id="statExpenses">₹0</strong>
                         </div>
 
-                        <i data-lucide="piggy-bank"></i>
+                        <div class="stat-large">
+                            <span>Total income</span>
+                            <strong id="statIncome">₹0</strong>
+                        </div>
+
+                        <div class="stat-large">
+                            <span>Net</span>
+                            <strong id="statNet">₹0</strong>
+                        </div>
 
                     </div>
 
+                </section>
 
-                    <div class="savings-progress">
 
-                        <span
-                            id="dashboardSavingsProgress"
-                        ></span>
+                <!-- AVERAGES -->
+                <section class="stats-section">
+
+                    <div class="section-heading">
+                        <div>
+                            <h2>Daily averages</h2>
+                        </div>
+                    </div>
+
+                    <div class="stats-list">
+
+                        <div class="stat-row">
+                            <div>
+                                <span>Average daily expense</span>
+                                <small>This month</small>
+                            </div>
+
+                            <strong id="averageExpense">₹0</strong>
+                        </div>
+
+                        <div class="stat-row">
+                            <div>
+                                <span>Average daily income</span>
+                                <small>This month</small>
+                            </div>
+
+                            <strong id="averageIncome">₹0</strong>
+                        </div>
+
+                        <div class="stat-row">
+                            <div>
+                                <span>Average transaction</span>
+                                <small>All transactions</small>
+                            </div>
+
+                            <strong id="averageTransaction">₹0</strong>
+                        </div>
 
                     </div>
 
+                </section>
 
-                    <button
-                        type="button"
-                        class="feature-action"
-                        id="editSavingsButton"
+
+                <!-- OTHER STATISTICS -->
+                <section class="stats-section">
+
+                    <div class="section-heading">
+                        <div>
+                            <h2>Insights</h2>
+                        </div>
+                    </div>
+
+                    <div class="stats-list">
+
+                        <div class="stat-row">
+                            <div>
+                                <span>Highest expense</span>
+                                <small id="highestExpenseCategory">—</small>
+                            </div>
+
+                            <strong id="highestExpense">₹0</strong>
+                        </div>
+
+                        <div class="stat-row">
+                            <div>
+                                <span>Transactions</span>
+                                <small>All time</small>
+                            </div>
+
+                            <strong id="transactionCount">0</strong>
+                        </div>
+
+                        <div class="stat-row">
+                            <div>
+                                <span>Savings rate</span>
+                                <small>This month</small>
+                            </div>
+
+                            <strong id="savingsRate">0%</strong>
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- CATEGORY RANKING -->
+                <section class="stats-section">
+
+                    <div class="section-heading">
+                        <div>
+                            <h2>Expense categories</h2>
+                        </div>
+                    </div>
+
+                    <div
+                        class="category-ranking"
+                        id="categoryRanking"
                     >
-                        Edit savings
-                    </button>
+                        <div class="empty-state compact">
+                            <p>No expense data yet.</p>
+                        </div>
+                    </div>
 
-                </div>
+                </section>
 
             </section>
 
-        </section>
+        </main>
 
 
+        <!-- =========================
+             BOTTOM NAVIGATION
+        ========================== -->
+        <nav class="bottom-nav">
 
-        <!-- =====================================================
-             TRANSACTIONS PAGE
-             ===================================================== -->
+            <button
+                class="nav-item active"
+                data-page="dashboardPage"
+            >
+                <i data-lucide="house"></i>
+                <span>Dashboard</span>
+            </button>
 
-        <section
-            id="transactionsPage"
-            class="page"
-        >
+            <button
+                class="nav-item"
+                data-page="transactionsPage"
+            >
+                <i data-lucide="list"></i>
+                <span>Transactions</span>
+            </button>
 
-            <div class="page-heading">
+            <button
+                class="nav-item"
+                data-page="statisticsPage"
+            >
+                <i data-lucide="chart-no-axes-combined"></i>
+                <span>Statistics</span>
+            </button>
 
+        </nav>
+
+    </div>
+
+
+    <!-- =========================
+         AMOUNT MODAL
+    ========================== -->
+    <div
+        class="modal-overlay"
+        id="amountModal"
+        aria-hidden="true"
+    >
+
+        <div class="modal-sheet amount-sheet">
+
+            <div class="modal-handle"></div>
+
+            <div class="modal-header">
                 <div>
-
-                    <h1>
-                        Transactions
-                    </h1>
-
-                    <p>
-                        Every transaction in one place
-                    </p>
-
+                    <span id="amountModalType">Expense</span>
+                    <h2>Enter amount</h2>
                 </div>
-
 
                 <button
                     class="icon-button"
-                    id="transactionFilterButton"
-                    type="button"
-                    aria-label="Filter transactions"
-                >
-                    <i data-lucide="sliders-horizontal"></i>
-                </button>
-
-            </div>
-
-
-            <div
-                id="allTransactions"
-                class="transaction-list all-transactions-list"
-            ></div>
-
-        </section>
-
-
-
-        <!-- =====================================================
-             STATISTICS PAGE
-             ===================================================== -->
-
-        <section
-            id="statisticsPage"
-            class="page"
-        >
-
-            <div class="page-heading">
-
-                <div>
-
-                    <h1>
-                        Statistics
-                    </h1>
-
-                    <p>
-                        Important numbers without unnecessary graphs
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="statistics-grid">
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Average daily expense
-                    </span>
-
-                    <strong id="averageDailyExpense">
-                        ₹0
-                    </strong>
-
-                    <span class="stat-note">
-                        This month so far
-                    </span>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Average daily income
-                    </span>
-
-                    <strong id="averageDailyIncomeValue">
-                        ₹0
-                    </strong>
-
-                    <span class="stat-note">
-                        This month so far
-                    </span>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Highest expense
-                    </span>
-
-                    <strong id="highestExpense">
-                        ₹0
-                    </strong>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Highest income
-                    </span>
-
-                    <strong id="highestIncome">
-                        ₹0
-                    </strong>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Total transactions
-                    </span>
-
-                    <strong id="totalTransactions">
-                        0
-                    </strong>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Total transfers
-                    </span>
-
-                    <strong id="totalTransfers">
-                        ₹0
-                    </strong>
-
-                    <span class="stat-note">
-                        Not counted as income or expense
-                    </span>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Current cash
-                    </span>
-
-                    <strong id="statisticsCash">
-                        ₹0
-                    </strong>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Current bank
-                    </span>
-
-                    <strong id="statisticsBank">
-                        ₹0
-                    </strong>
-
-                </article>
-
-
-                <article class="stat-card">
-
-                    <span class="stat-label">
-                        Total money
-                    </span>
-
-                    <strong id="statisticsTotalMoney">
-                        ₹0
-                    </strong>
-
-                </article>
-
-
-            </div>
-
-
-            <section class="statistics-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        This month
-                    </h2>
-
-                    <p>
-                        Simple breakdown
-                    </p>
-
-                </div>
-
-
-                <div class="statistics-breakdown">
-
-
-                    <div class="breakdown-row">
-
-                        <span>
-                            Income
-                        </span>
-
-                        <strong id="statisticsMonthIncome">
-                            ₹0
-                        </strong>
-
-                    </div>
-
-
-                    <div class="breakdown-row">
-
-                        <span>
-                            Expenses
-                        </span>
-
-                        <strong id="statisticsMonthExpense">
-                            ₹0
-                        </strong>
-
-                    </div>
-
-
-                    <div class="breakdown-row total-row">
-
-                        <span>
-                            Net
-                        </span>
-
-                        <strong id="statisticsMonthNet">
-                            ₹0
-                        </strong>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        </section>
-
-
-
-        <!-- =====================================================
-             SETTINGS PAGE
-             ===================================================== -->
-
-        <section
-            id="settingsPage"
-            class="page"
-        >
-
-            <div class="page-heading">
-
-                <div>
-
-                    <h1>
-                        Settings
-                    </h1>
-
-                    <p>
-                        Make TrackIt work your way
-                    </p>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- =================================================
-                 CATEGORIES
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Categories
-                    </h2>
-
-                    <p>
-                        Create your own categories
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-
-                    <div class="settings-row">
-
-                        <div class="settings-row-info">
-
-                            <strong>
-                                Expense categories
-                            </strong>
-
-                            <span>
-                                Used when adding expenses
-                            </span>
-
-                        </div>
-
-
-                        <button
-                            type="button"
-                            class="secondary-action"
-                            id="manageExpenseCategoriesButton"
-                        >
-                            Manage
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        id="expenseCategoriesList"
-                        class="settings-list"
-                    ></div>
-
-
-                    <div class="settings-row">
-
-                        <div class="settings-row-info">
-
-                            <strong>
-                                Income categories
-                            </strong>
-
-                            <span>
-                                Used when adding income
-                            </span>
-
-                        </div>
-
-
-                        <button
-                            type="button"
-                            class="secondary-action"
-                            id="manageIncomeCategoriesButton"
-                        >
-                            Manage
-                        </button>
-
-                    </div>
-
-
-                    <div
-                        id="incomeCategoriesList"
-                        class="settings-list"
-                    ></div>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 CASH ACCOUNTS
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Cash accounts
-                    </h2>
-
-                    <p>
-                        Physical cash accounts
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-                    <div
-                        id="cashAccountsList"
-                        class="account-list"
-                    ></div>
-
-
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addCashAccountButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add cash account
-                    </button>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 BANK ACCOUNTS
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Bank accounts
-                    </h2>
-
-                    <p>
-                        Your bank accounts
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-                    <div
-                        id="bankAccountsList"
-                        class="account-list"
-                    ></div>
-
-
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addBankAccountButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add bank account
-                    </button>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 INVESTMENTS
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Investments
-                    </h2>
-
-                    <p>
-                        Track investments and returns
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-                    <div
-                        id="investmentSettingsList"
-                        class="account-list"
-                    ></div>
-
-
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addInvestmentButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add investment
-                    </button>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 SAVINGS
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Savings goals
-                    </h2>
-
-                    <p>
-                        Things you want to save for
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-                    <div
-                        id="savingsSettingsList"
-                        class="account-list"
-                    ></div>
-
-
-                    <button
-                        type="button"
-                        class="secondary-action full-width-action"
-                        id="addSavingsButton"
-                    >
-                        <i data-lucide="plus"></i>
-                        Add savings goal
-                    </button>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 STATISTICS SETTINGS
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Statistics
-                    </h2>
-
-                    <p>
-                        Choose what TrackIt includes
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-
-                    <div class="settings-toggle-row">
-
-                        <div class="settings-row-info">
-
-                            <strong>
-                                Cash accounts
-                            </strong>
-
-                            <span>
-                                Include cash in statistics
-                            </span>
-
-                        </div>
-
-
-                        <label class="switch">
-
-                            <input
-                                type="checkbox"
-                                id="statisticsCashToggle"
-                                checked
-                            >
-
-                            <span class="switch-track"></span>
-
-                        </label>
-
-                    </div>
-
-
-                    <div class="settings-toggle-row">
-
-                        <div class="settings-row-info">
-
-                            <strong>
-                                Bank accounts
-                            </strong>
-
-                            <span>
-                                Include bank accounts
-                            </span>
-
-                        </div>
-
-
-                        <label class="switch">
-
-                            <input
-                                type="checkbox"
-                                id="statisticsBankToggle"
-                                checked
-                            >
-
-                            <span class="switch-track"></span>
-
-                        </label>
-
-                    </div>
-
-
-                    <div class="settings-toggle-row">
-
-                        <div class="settings-row-info">
-
-                            <strong>
-                                Investments
-                            </strong>
-
-                            <span>
-                                Include investments
-                            </span>
-
-                        </div>
-
-
-                        <label class="switch">
-
-                            <input
-                                type="checkbox"
-                                id="statisticsInvestmentToggle"
-                                checked
-                            >
-
-                            <span class="switch-track"></span>
-
-                        </label>
-
-                    </div>
-
-
-                    <div class="settings-toggle-row">
-
-                        <div class="settings-row-info">
-
-                            <strong>
-                                Savings
-                            </strong>
-
-                            <span>
-                                Include savings
-                            </span>
-
-                        </div>
-
-
-                        <label class="switch">
-
-                            <input
-                                type="checkbox"
-                                id="statisticsSavingsToggle"
-                                checked
-                            >
-
-                            <span class="switch-track"></span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 DATA
-                 ================================================= -->
-
-            <section class="settings-section">
-
-                <div class="section-heading">
-
-                    <h2>
-                        Data
-                    </h2>
-
-                    <p>
-                        Keep a copy of your TrackIt data
-                    </p>
-
-                </div>
-
-
-                <div class="settings-card">
-
-
-                    <button
-                        type="button"
-                        class="settings-action-row"
-                        id="exportPdfButton"
-                    >
-
-                        <span>
-
-                            <i data-lucide="file-text"></i>
-
-                            <span>
-                                Export statement PDF
-                            </span>
-
-                        </span>
-
-                        <i data-lucide="chevron-right"></i>
-
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="settings-action-row"
-                        id="exportJsonButton"
-                    >
-
-                        <span>
-
-                            <i data-lucide="download"></i>
-
-                            <span>
-                                Export JSON
-                            </span>
-
-                        </span>
-
-                        <i data-lucide="chevron-right"></i>
-
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="settings-action-row"
-                        id="importJsonButton"
-                    >
-
-                        <span>
-
-                            <i data-lucide="upload"></i>
-
-                            <span>
-                                Import JSON
-                            </span>
-
-                        </span>
-
-                        <i data-lucide="chevron-right"></i>
-
-                    </button>
-
-
-                    <input
-                        type="file"
-                        id="jsonImportInput"
-                        accept=".json,application/json"
-                        hidden
-                    >
-
-                </div>
-
-            </section>
-
-        </section>
-
-    </main>
-
-
-
-    <!-- =========================================================
-         BOTTOM NAVIGATION
-         ========================================================= -->
-
-    <nav
-        class="bottom-navigation"
-        aria-label="Main navigation"
-    >
-
-        <button
-            type="button"
-            class="nav-item active"
-            data-page="dashboardPage"
-            id="dashboardNavButton"
-        >
-
-            <i data-lucide="layout-dashboard"></i>
-
-            <span>
-                Dashboard
-            </span>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-item"
-            data-page="transactionsPage"
-            id="transactionsNavButton"
-        >
-
-            <i data-lucide="receipt"></i>
-
-            <span>
-                Transactions
-            </span>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-item"
-            data-page="statisticsPage"
-            id="statisticsNavButton"
-        >
-
-            <i data-lucide="chart-no-axes-combined"></i>
-
-            <span>
-                Statistics
-            </span>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-item"
-            data-page="settingsPage"
-            id="settingsNavButton"
-        >
-
-            <i data-lucide="settings"></i>
-
-            <span>
-                Settings
-            </span>
-
-        </button>
-
-    </nav>
-
-
-
-    <!-- =========================================================
-         UNIVERSAL MODAL
-         ========================================================= -->
-
-    <div
-        class="modal-overlay"
-        id="modalOverlay"
-        hidden
-    >
-
-        <div
-            class="modal"
-            id="universalModal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modalTitle"
-        >
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h2 id="modalTitle">
-                        Select
-                    </h2>
-
-                    <p id="modalSubtitle"></p>
-
-                </div>
-
-
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="modalCloseButton"
+                    id="closeAmountModal"
                     aria-label="Close"
                 >
-
                     <i data-lucide="x"></i>
-
                 </button>
+            </div>
+
+            <div class="amount-input-wrapper">
+
+                <span>₹</span>
+
+                <input
+                    type="number"
+                    id="amountInput"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="0"
+                >
 
             </div>
 
+            <p class="modal-account">
+                <i data-lucide="wallet"></i>
+                <span id="selectedAccountName">Cash</span>
+            </p>
 
-            <div
-                class="modal-body"
-                id="modalBody"
-            ></div>
+            <div class="modal-actions">
 
+                <button
+                    class="secondary-button"
+                    id="cancelAmount"
+                >
+                    Cancel
+                </button>
 
-            <div
-                class="modal-actions"
-                id="modalActions"
-            ></div>
+                <button
+                    class="primary-button"
+                    id="continueAmount"
+                >
+                    Continue
+                </button>
+
+            </div>
 
         </div>
 
     </div>
 
 
-
-    <!-- =========================================================
-         CATEGORY PICKER
-         ========================================================= -->
-
+    <!-- =========================
+         CATEGORY MODAL
+    ========================== -->
     <div
         class="modal-overlay"
         id="categoryModal"
-        hidden
+        aria-hidden="true"
     >
 
-        <div
-            class="modal category-modal"
-            role="dialog"
-            aria-modal="true"
-        >
+        <div class="modal-sheet category-sheet">
+
+            <div class="modal-handle"></div>
 
             <div class="modal-header">
 
                 <div>
-
-                    <h2 id="categoryModalTitle">
-                        Choose category
-                    </h2>
-
-                    <p>
-                        Select a category for this transaction
-                    </p>
-
+                    <span id="categoryModalType">Expense</span>
+                    <h2>Select category</h2>
                 </div>
 
-
                 <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="categoryModalClose"
+                    class="icon-button"
+                    id="closeCategoryModal"
                     aria-label="Close"
                 >
-
                     <i data-lucide="x"></i>
-
                 </button>
 
             </div>
-
 
             <div
-                id="categoryOptions"
-                class="category-options"
-            ></div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =========================================================
-         ACCOUNT PICKER
-         ========================================================= -->
-
-    <div
-        class="modal-overlay"
-        id="accountPickerModal"
-        hidden
-    >
-
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h2 id="accountPickerTitle">
-                        Choose account
-                    </h2>
-
-                    <p>
-                        Select an account
-                    </p>
-
-                </div>
-
-
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="accountPickerClose"
-                    aria-label="Close"
-                >
-
-                    <i data-lucide="x"></i>
-
-                </button>
-
-            </div>
-
-
-            <div
-                id="accountPickerOptions"
-                class="selection-list"
-            ></div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =========================================================
-         TRANSACTION EDIT MODAL
-         ========================================================= -->
-
-    <div
-        class="modal-overlay"
-        id="transactionEditModal"
-        hidden
-    >
-
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h2>
-                        Edit transaction
-                    </h2>
-
-                    <p>
-                        Update transaction details
-                    </p>
-
-                </div>
-
-
-                <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="transactionEditClose"
-                    aria-label="Close"
-                >
-
-                    <i data-lucide="x"></i>
-
-                </button>
-
-            </div>
-
-
-            <form
-                id="transactionEditForm"
-                class="modal-form"
+                class="category-grid"
+                id="categoryGrid"
             >
+                <!-- Categories inserted by JavaScript -->
+            </div>
 
-                <input
-                    type="hidden"
-                    id="editTransactionId"
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         EDIT TRANSACTION MODAL
+    ========================== -->
+    <div
+        class="modal-overlay"
+        id="editModal"
+        aria-hidden="true"
+    >
+
+        <div class="modal-sheet edit-sheet">
+
+            <div class="modal-handle"></div>
+
+            <div class="modal-header">
+
+                <div>
+                    <span>TRANSACTION</span>
+                    <h2>Edit transaction</h2>
+                </div>
+
+                <button
+                    class="icon-button"
+                    id="closeEditModal"
+                    aria-label="Close"
                 >
+                    <i data-lucide="x"></i>
+                </button>
+
+            </div>
 
 
-                <div class="form-field">
+            <div class="edit-form">
 
-                    <label for="editTransactionAmount">
-                        Amount
-                    </label>
+                <label>
+                    Amount
 
-                    <div class="amount-input-wrap">
-
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
+                    <div class="input-with-prefix">
+                        <span>₹</span>
 
                         <input
-                            id="editTransactionAmount"
                             type="number"
-                            min="0"
-                            step="0.01"
+                            id="editAmount"
                             inputmode="decimal"
-                            required
                         >
-
                     </div>
+                </label>
 
-                </div>
+
+                <label>
+                    Type
+
+                    <select id="editType">
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </label>
 
 
-                <div class="form-field">
+                <label>
+                    Category
 
-                    <label for="editTransactionDate">
-                        Date
-                    </label>
+                    <select id="editCategory">
+                    </select>
+                </label>
+
+
+                <label>
+                    Account
+
+                    <select id="editAccount">
+                    </select>
+                </label>
+
+
+                <label>
+                    Date
 
                     <input
-                        id="editTransactionDate"
                         type="date"
-                        required
+                        id="editDate"
                     >
+                </label>
 
-                </div>
 
+                <label>
+                    Time
 
-                <div class="form-field">
-
-                    <label for="editTransactionCategory">
-                        Category
-                    </label>
-
-                    <button
-                        type="button"
-                        class="form-select-button"
-                        id="editTransactionCategory"
+                    <input
+                        type="time"
+                        id="editTime"
                     >
-                        Select category
-                    </button>
+                </label>
 
-                </div>
+            </div>
 
 
-                <div class="modal-actions">
+            <div class="modal-actions edit-actions">
 
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveTransactionEditButton"
-                    >
-                        Save
-                    </button>
+                <button
+                    class="primary-button"
+                    id="saveEdit"
+                >
+                    Save
+                </button>
 
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelTransactionEditButton"
-                    >
-                        Cancel
-                    </button>
+                <button
+                    class="danger-button"
+                    id="deleteEdit"
+                >
+                    Delete
+                </button>
 
-                </div>
-
-            </form>
+            </div>
 
         </div>
 
     </div>
 
 
-
-    <!-- =========================================================
-         ACCOUNT FORM MODAL
-         ========================================================= -->
-
+    <!-- =========================
+         SETTINGS MODAL
+    ========================== -->
     <div
         class="modal-overlay"
-        id="accountFormModal"
-        hidden
+        id="settingsModal"
+        aria-hidden="true"
     >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+        <div class="modal-sheet settings-sheet">
+
+            <div class="modal-handle"></div>
 
             <div class="modal-header">
 
                 <div>
-
-                    <h2 id="accountFormTitle">
-                        Add account
-                    </h2>
-
-                    <p id="accountFormSubtitle">
-                        Create an account
-                    </p>
-
+                    <span>TRACKIT</span>
+                    <h2>Settings</h2>
                 </div>
 
-
                 <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="accountFormClose"
+                    class="icon-button"
+                    id="closeSettingsModal"
                     aria-label="Close"
                 >
-
                     <i data-lucide="x"></i>
-
                 </button>
 
             </div>
 
 
-            <form
-                id="accountForm"
-                class="modal-form"
-            >
+            <!-- CATEGORIES -->
+            <div class="settings-group">
 
-                <input
-                    type="hidden"
-                    id="accountFormType"
-                >
-
-                <input
-                    type="hidden"
-                    id="accountFormId"
-                >
-
-
-                <div class="form-field">
-
-                    <label for="accountName">
-                        Account name
-                    </label>
-
-                    <input
-                        id="accountName"
-                        type="text"
-                        placeholder="e.g. HDFC Bank"
-                        autocomplete="off"
-                        required
-                    >
-
-                </div>
-
-
-                <div class="form-field">
-
-                    <label for="accountOpeningBalance">
-                        Current balance
-                    </label>
-
-                    <div class="amount-input-wrap">
-
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
-
-                        <input
-                            id="accountOpeningBalance"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            placeholder="0"
-                        >
-
-                    </div>
-
-                </div>
-
-
-                <div class="settings-toggle-row">
-
-                    <div class="settings-row-info">
-
-                        <strong>
-                            Make primary
-                        </strong>
-
-                        <span>
-                            Use this account in quick entry
-                        </span>
-
-                    </div>
-
-
-                    <label class="switch">
-
-                        <input
-                            type="checkbox"
-                            id="accountPrimaryToggle"
-                        >
-
-                        <span class="switch-track"></span>
-
-                    </label>
-
-                </div>
-
-
-                <div class="modal-actions">
-
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveAccountButton"
-                    >
-                        Add account
-                    </button>
-
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelAccountButton"
-                    >
-                        Cancel
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =========================================================
-         CATEGORY FORM MODAL
-         ========================================================= -->
-
-    <div
-        class="modal-overlay"
-        id="categoryFormModal"
-        hidden
-    >
-
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h2 id="categoryFormTitle">
-                        Add category
-                    </h2>
-
-                    <p>
-                        Create your own category
-                    </p>
-
-                </div>
-
+                <h3>Categories</h3>
 
                 <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="categoryFormClose"
-                    aria-label="Close"
+                    class="settings-row"
+                    id="expenseCategoriesButton"
                 >
+                    <div>
+                        <strong>Expense categories</strong>
+                        <span>Manage where money goes</span>
+                    </div>
 
-                    <i data-lucide="x"></i>
+                    <i data-lucide="chevron-right"></i>
+                </button>
 
+                <button
+                    class="settings-row"
+                    id="incomeCategoriesButton"
+                >
+                    <div>
+                        <strong>Income categories</strong>
+                        <span>Manage where money comes from</span>
+                    </div>
+
+                    <i data-lucide="chevron-right"></i>
                 </button>
 
             </div>
 
 
-            <form
-                id="categoryForm"
-                class="modal-form"
-            >
+            <!-- ACCOUNTS -->
+            <div class="settings-group">
 
-                <input
-                    type="hidden"
-                    id="categoryFormType"
-                >
-
-                <input
-                    type="hidden"
-                    id="categoryFormId"
-                >
-
-
-                <div class="form-field">
-
-                    <label for="categoryName">
-                        Category name
-                    </label>
-
-                    <input
-                        id="categoryName"
-                        type="text"
-                        placeholder="e.g. Groceries"
-                        autocomplete="off"
-                        required
-                    >
-
-                </div>
-
-
-                <div class="modal-actions">
-
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveCategoryButton"
-                    >
-                        Add category
-                    </button>
-
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelCategoryButton"
-                    >
-                        Cancel
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =========================================================
-         INVESTMENT FORM
-         ========================================================= -->
-
-    <div
-        class="modal-overlay"
-        id="investmentFormModal"
-        hidden
-    >
-
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h2>
-                        Investment
-                    </h2>
-
-                    <p>
-                        Add or modify an investment
-                    </p>
-
-                </div>
-
+                <h3>Accounts</h3>
 
                 <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="investmentFormClose"
-                    aria-label="Close"
+                    class="settings-row"
+                    id="cashAccountsButton"
                 >
+                    <div>
+                        <strong>Cash accounts</strong>
+                        <span>Manage cash accounts</span>
+                    </div>
 
-                    <i data-lucide="x"></i>
+                    <i data-lucide="chevron-right"></i>
+                </button>
 
+                <button
+                    class="settings-row"
+                    id="bankAccountsButton"
+                >
+                    <div>
+                        <strong>Bank accounts</strong>
+                        <span>Manage bank accounts</span>
+                    </div>
+
+                    <i data-lucide="chevron-right"></i>
                 </button>
 
             </div>
 
 
-            <form
-                id="investmentForm"
-                class="modal-form"
-            >
+            <!-- DATA -->
+            <div class="settings-group">
+
+                <h3>Data</h3>
+
+                <button
+                    class="settings-row"
+                    id="exportPdfButton"
+                >
+                    <div>
+                        <strong>Export statement</strong>
+                        <span>Save your statement as PDF</span>
+                    </div>
+
+                    <i data-lucide="file-down"></i>
+                </button>
+
+                <button
+                    class="settings-row"
+                    id="exportJsonButton"
+                >
+                    <div>
+                        <strong>Export JSON</strong>
+                        <span>Backup all TrackIt data</span>
+                    </div>
+
+                    <i data-lucide="download"></i>
+                </button>
+
+                <button
+                    class="settings-row"
+                    id="importJsonButton"
+                >
+                    <div>
+                        <strong>Import JSON</strong>
+                        <span>Restore a TrackIt backup</span>
+                    </div>
+
+                    <i data-lucide="upload"></i>
+                </button>
 
                 <input
-                    type="hidden"
-                    id="investmentId"
+                    type="file"
+                    id="jsonFileInput"
+                    accept=".json,application/json"
+                    hidden
                 >
 
-
-                <div class="form-field">
-
-                    <label for="investmentName">
-                        Investment name
-                    </label>
-
-                    <input
-                        id="investmentName"
-                        type="text"
-                        placeholder="e.g. Mutual Fund"
-                        required
-                    >
-
-                </div>
-
-
-                <div class="form-field">
-
-                    <label for="investmentAmount">
-                        Amount
-                    </label>
-
-                    <div class="amount-input-wrap">
-
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
-
-                        <input
-                            id="investmentAmount"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
-
-                    </div>
-
-                </div>
-
-
-                <div class="form-field">
-
-                    <label for="investmentReturn">
-                        Return percentage
-                    </label>
-
-                    <div class="input-with-unit">
-
-                        <input
-                            id="investmentReturn"
-                            type="number"
-                            step="0.01"
-                            inputmode="decimal"
-                            placeholder="0"
-                        >
-
-                        <span>
-                            %
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <div class="modal-actions">
-
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveInvestmentButton"
-                    >
-                        Save
-                    </button>
-
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelInvestmentButton"
-                    >
-                        Cancel
-                    </button>
-
-                </div>
-
-            </form>
+            </div>
 
         </div>
 
     </div>
 
 
-
-    <!-- =========================================================
-         SAVINGS FORM
-         ========================================================= -->
-
+    <!-- =========================
+         CATEGORY MANAGEMENT
+    ========================== -->
     <div
         class="modal-overlay"
-        id="savingsFormModal"
-        hidden
+        id="manageCategoriesModal"
+        aria-hidden="true"
     >
 
-        <div
-            class="modal"
-            role="dialog"
-            aria-modal="true"
-        >
+        <div class="modal-sheet management-sheet">
+
+            <div class="modal-handle"></div>
 
             <div class="modal-header">
 
                 <div>
-
-                    <h2>
-                        Savings goal
+                    <span id="managementType">EXPENSE</span>
+                    <h2 id="managementTitle">
+                        Expense categories
                     </h2>
-
-                    <p>
-                        Add or modify something you're saving for
-                    </p>
-
                 </div>
 
-
                 <button
-                    type="button"
-                    class="icon-button modal-close-button"
-                    id="savingsFormClose"
+                    class="icon-button"
+                    id="closeManageCategories"
                     aria-label="Close"
                 >
-
                     <i data-lucide="x"></i>
-
                 </button>
 
             </div>
 
 
-            <form
-                id="savingsForm"
-                class="modal-form"
+            <div
+                class="management-list"
+                id="managementCategoryList"
             >
+            </div>
+
+
+            <div class="add-row">
 
                 <input
-                    type="hidden"
-                    id="savingsId"
+                    type="text"
+                    id="newCategoryInput"
+                    placeholder="New category"
+                    maxlength="30"
                 >
 
+                <button
+                    class="primary-button"
+                    id="addCategoryButton"
+                >
+                    Add
+                </button>
 
-                <div class="form-field">
-
-                    <label for="savingsName">
-                        Saving for
-                    </label>
-
-                    <input
-                        id="savingsName"
-                        type="text"
-                        placeholder="e.g. MacBook"
-                        required
-                    >
-
-                </div>
-
-
-                <div class="form-field">
-
-                    <label for="savingsCurrent">
-                        Current saved amount
-                    </label>
-
-                    <div class="amount-input-wrap">
-
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
-
-                        <input
-                            id="savingsCurrent"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
-
-                    </div>
-
-                </div>
-
-
-                <div class="form-field">
-
-                    <label for="savingsGoal">
-                        Goal amount
-                    </label>
-
-                    <div class="amount-input-wrap">
-
-                        <span class="currency-symbol">
-                            ₹
-                        </span>
-
-                        <input
-                            id="savingsGoal"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            inputmode="decimal"
-                            required
-                        >
-
-                    </div>
-
-                </div>
-
-
-                <div class="modal-actions">
-
-                    <button
-                        type="submit"
-                        class="primary-action"
-                        id="saveSavingsButton"
-                    >
-                        Save
-                    </button>
-
-                    <button
-                        type="button"
-                        class="secondary-action"
-                        id="cancelSavingsButton"
-                    >
-                        Cancel
-                    </button>
-
-                </div>
-
-            </form>
+            </div>
 
         </div>
 
     </div>
 
 
-
-    <!-- =========================================================
-         TOAST
-         ========================================================= -->
-
+    <!-- =========================
+         ACCOUNT MANAGEMENT
+    ========================== -->
     <div
-        class="toast"
-        id="toast"
-        role="status"
-        aria-live="polite"
+        class="modal-overlay"
+        id="manageAccountsModal"
+        aria-hidden="true"
     >
-        <span id="toastMessage"></span>
+
+        <div class="modal-sheet management-sheet">
+
+            <div class="modal-handle"></div>
+
+            <div class="modal-header">
+
+                <div>
+                    <span id="accountManagementType">CASH</span>
+                    <h2 id="accountManagementTitle">
+                        Cash accounts
+                    </h2>
+                </div>
+
+                <button
+                    class="icon-button"
+                    id="closeManageAccounts"
+                    aria-label="Close"
+                >
+                    <i data-lucide="x"></i>
+                </button>
+
+            </div>
+
+
+            <div
+                class="management-list"
+                id="managementAccountList"
+            >
+            </div>
+
+
+            <div class="add-row">
+
+                <input
+                    type="text"
+                    id="newAccountInput"
+                    placeholder="New account"
+                    maxlength="30"
+                >
+
+                <button
+                    class="primary-button"
+                    id="addAccountButton"
+                >
+                    Add
+                </button>
+
+            </div>
+
+        </div>
+
     </div>
 
 
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
 
-    <!-- =========================================================
-         LOADING
-         ========================================================= -->
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.468.0/lucide.min.js"
+    ></script>
 
-    <div
-        class="loading-screen"
-        id="loadingScreen"
-        hidden
-    >
-
-        <div class="loading-spinner"></div>
-
-    </div>
-
-
-</div>
-
-
-<!-- =============================================================
-     APPLICATION SCRIPT
-     ============================================================= -->
-
-<script src="script.js"></script>
-
-
-<script>
-    /*
-     * Render Lucide icons after the page has loaded.
-     * The main application JS can also call this after
-     * dynamically creating elements.
-     */
-    document.addEventListener("DOMContentLoaded", () => {
-
-        if (window.lucide) {
-            lucide.createIcons();
-        }
-
-    });
-</script>
+    <script src="script.js"></script>
 
 </body>
 </html>
